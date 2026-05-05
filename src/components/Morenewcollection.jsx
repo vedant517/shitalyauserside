@@ -54,7 +54,7 @@ function ElephantStrip() {
 
 export default function NewwCollection() {
   return (
-    <section className="pt-[40px] sm:pt-[50px] md:pt-[60px] pb-0 bg-[#fdf8f0]">
+    <section className="pt-[40px] sm:pt-[50px] md:pt-[60px] pb-0 bg-white">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 md:px-10">
         <SectionTitle>New Collection</SectionTitle>
 
@@ -63,15 +63,11 @@ export default function NewwCollection() {
         </div>
 
         <div className="text-center mt-[28px] sm:mt-[32px] md:mt-[36px] pb-2">
-          <button
-            className="bg-transparent text-[#c9973a] font-[Cinzel] text-[10px] sm:text-[11px] tracking-[0.22em] font-semibold px-[24px] sm:px-[28px] md:px-[32px] py-[10px] sm:py-[11px] border border-[#c9973a] cursor-pointer transition-all hover:bg-[#c9973a] hover:text-white"
-          >
-            SHOP COLLECTION →
-          </button>
+          
         </div>
       </div>
 
-      <ElephantStrip />
+     
     </section>
   );
 }

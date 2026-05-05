@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useRegisterMutation, useSendOtpMutation, useVerifyOtpMutation } from '../Redux/api/authApi';
 
-function Input({ placeholder, type = 'text', value, onChange }) {
+function Input({ placeholder, type = 'text', value, onChange, disabled }) {
   const [focus, setFocus] = useState(false);
 
   return (
@@ -9,9 +10,10 @@ function Input({ placeholder, type = 'text', value, onChange }) {
       placeholder={placeholder}
       value={value}
       onChange={onChange}
+      disabled={disabled}
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
-      className="w-full px-3 sm:px-4 py-[11px] sm:py-[12px] md:py-[13px] bg-white rounded-md text-[14px] md:text-[15px] outline-none transition"
+      className="w-full px-3 sm:px-4 py-[11px] sm:py-[12px] md:py-[13px] bg-white rounded-md text-[14px] md:text-[15px] outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
         border: `1px solid ${focus ? '#b8963a' : '#d4c9bc'}`,
         color: '#3a2200',
@@ -21,9 +23,84 @@ function Input({ placeholder, type = 'text', value, onChange }) {
   );
 }
 
+// 3 steps: DETAILS → OTP → DONE
+const STEP = { DETAILS: 'details', OTP: 'otp', DONE: 'done' };
+
 export default function CreateAccount() {
-  const [name, setName] = useState('');
-  const [mobile, setMobile] = useState('+91');
+  const [step, setStep]       = useState(STEP.DETAILS);
+  const [name, setName]       = useState('');
+  const [mobile, setMobile]   = useState('+91');
+  const [otp, setOtp]         = useState('');
+  const [error, setError]     = useState('');
+  const [success, setSuccess] = useState('');
+
+  const [register,  { isLoading: registering }]  = useRegisterMutation();
+  const [sendOtp,   { isLoading: sendingOtp }]   = useSendOtpMutation();
+  const [verifyOtp, { isLoading: verifyingOtp }] = useVerifyOtpMutation();
+
+  const getRawPhone = () => mobile.replace(/\D/g, '').replace(/^91/, '');
+
+  const isLoading = registering || sendingOtp || verifyingOtp;
+
+  /* ── STEP 1: Register + Send OTP ─────────────────────── */
+  const handleCreateAccount = async () => {
+    setError('');
+    setSuccess('');
+    const phone = getRawPhone();
+
+    if (!name.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
+    if (phone.length !== 10) {
+      setError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    try {
+      // Register the user
+      await register({ name: name.trim(), phonenum: phone }).unwrap();
+      // Then send OTP for verification
+      await sendOtp(phone).unwrap();
+      setSuccess('Account created! OTP sent to your mobile.');
+      setStep(STEP.OTP);
+    } catch (err) {
+      setError(err?.data?.message || 'Registration failed. Please try again.');
+    }
+  };
+
+  /* ── STEP 2: Verify OTP ───────────────────────────────── */
+  const handleVerifyOtp = async () => {
+    setError('');
+    setSuccess('');
+    if (!otp || otp.length < 4) {
+      setError('Please enter the OTP.');
+      return;
+    }
+    const phone = getRawPhone();
+    try {
+      const res = await verifyOtp({ phonenum: phone, otp }).unwrap();
+      setSuccess('Account verified! Redirecting…');
+      setStep(STEP.DONE);
+      // TODO: save token / redirect
+      // e.g. navigate('/home')
+      console.log('Verify response:', res);
+    } catch (err) {
+      setError(err?.data?.message || 'Invalid OTP. Please try again.');
+    }
+  };
+
+  const handleResend = async () => {
+    setOtp('');
+    setError('');
+    setSuccess('');
+    try {
+      await sendOtp(getRawPhone()).unwrap();
+      setSuccess('OTP resent successfully!');
+    } catch (err) {
+      setError(err?.data?.message || 'Failed to resend OTP.');
+    }
+  };
 
   return (
     <div
@@ -79,47 +156,116 @@ export default function CreateAccount() {
             fontSize: 'clamp(24px, 6vw, 34px)',
           }}
         >
-          Create Account
+          {step === STEP.OTP ? 'Verify OTP' : 'Create Account'}
         </h1>
 
-        {/* NAME */}
-        <div className="text-left mb-4 sm:mb-5">
-          <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-1.5 sm:mb-2 block">
-            Name
-          </label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter your name"
-          />
-        </div>
+        {/* ERROR / SUCCESS */}
+        {error && (
+          <p className="text-red-500 text-[12px] text-center mb-3 -mt-2">
+            {error}
+          </p>
+        )}
+        {success && (
+          <p className="text-green-600 text-[12px] text-center mb-3 -mt-2">
+            {success}
+          </p>
+        )}
 
-        {/* MOBILE */}
-        <div className="text-left mb-5 sm:mb-6">
-          <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-1.5 sm:mb-2 block">
-            Mobile No
-          </label>
-          <Input
-            value={mobile}
-            onChange={(e) => setMobile(e.target.value)}
-          />
-        </div>
+        {/* ── STEP 1: DETAILS ── */}
+        {step === STEP.DETAILS && (
+          <>
+            <div className="text-left mb-4 sm:mb-5">
+              <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-1.5 sm:mb-2 block">
+                Name
+              </label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
+                disabled={isLoading}
+              />
+            </div>
 
-        {/* BUTTON */}
-        <button
-          className="w-full py-[12px] sm:py-[13px] text-white text-[10px] sm:text-[11px] tracking-[0.2em] rounded-md mb-3 sm:mb-4"
-          style={{ background: '#8b7355' }}
-        >
-          CREATE ACCOUNT →
-        </button>
+            <div className="text-left mb-5 sm:mb-6">
+              <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-1.5 sm:mb-2 block">
+                Mobile No
+              </label>
+              <Input
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <button
+              onClick={handleCreateAccount}
+              disabled={isLoading}
+              className="w-full py-[12px] sm:py-[13px] text-white text-[10px] sm:text-[11px] tracking-[0.2em] rounded-md mb-3 sm:mb-4 disabled:opacity-60"
+              style={{ background: '#8b7355' }}
+            >
+              {isLoading ? 'PLEASE WAIT…' : 'CREATE ACCOUNT →'}
+            </button>
+          </>
+        )}
+
+        {/* ── STEP 2: OTP ── */}
+        {step === STEP.OTP && (
+          <>
+            <p className="text-[12px] text-[#666] text-center mb-4">
+              OTP sent to <span className="font-semibold text-[#3a2200]">{mobile}</span>
+            </p>
+
+            <div className="text-left mb-3">
+              <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-1.5 sm:mb-2 block">
+                OTP
+              </label>
+              <Input
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="Enter OTP"
+                type="number"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="text-right text-[11px] sm:text-[12px] text-[#777] mb-5">
+              Didn't receive OTP?{' '}
+              <span
+                onClick={!isLoading ? handleResend : undefined}
+                className={`text-[#c9973a] font-semibold ${isLoading ? 'opacity-50' : 'cursor-pointer'}`}
+              >
+                RESEND
+              </span>
+            </div>
+
+            <button
+              onClick={handleVerifyOtp}
+              disabled={isLoading}
+              className="w-full py-[12px] sm:py-[13px] text-white text-[10px] sm:text-[11px] tracking-[0.2em] rounded-md mb-3 sm:mb-4 disabled:opacity-60"
+              style={{ background: '#8b7355' }}
+            >
+              {verifyingOtp ? 'VERIFYING…' : 'VERIFY & CONTINUE →'}
+            </button>
+          </>
+        )}
+
+        {/* ── STEP 3: SUCCESS ── */}
+        {step === STEP.DONE && (
+          <div className="text-center py-4">
+            <p className="text-green-600 text-[15px] font-semibold mb-2">🎉 Welcome!</p>
+            <p className="text-[13px] text-[#666]">Your account has been created successfully.</p>
+          </div>
+        )}
 
         {/* FOOTER */}
-        <p className="text-[12px] sm:text-[13px] text-[#777] text-center">
-          Already have an account?{' '}
-          <a href="/login" className="text-[#b8963a] font-semibold">
-            Login
-          </a>
-        </p>
+        {step !== STEP.DONE && (
+          <p className="text-[12px] sm:text-[13px] text-[#777] text-center mt-1">
+            Already have an account?{' '}
+            <a href="/login" className="text-[#b8963a] font-semibold">
+              Login
+            </a>
+          </p>
+        )}
       </div>
     </div>
   );

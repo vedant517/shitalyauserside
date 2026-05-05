@@ -1,15 +1,58 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useGetCategoriesQuery } from "../Redux/api/categoryApi";
 
-const categories = [
+/* Fallback static categories shown while loading or on error */
+const FALLBACK_CATEGORIES = [
   { image: "/images/c1.png", label: "Royal Silks"        },
   { image: "/images/c2.png", label: "Festive Radiance"   },
   { image: "/images/c3.png", label: "Bridal Elegance"    },
   { image: "/images/c4.png", label: "Handwoven Heritage" },
 ];
 
+/* Skeleton card shown while loading */
+const SkeletonCard = () => (
+  <div className="flex flex-col gap-3 sm:gap-[14px] animate-pulse">
+    <div
+      className="w-full bg-gray-200"
+      style={{ aspectRatio: "3/4.2", borderRadius: 2 }}
+    />
+    <div className="h-3 bg-gray-200 rounded w-2/3" />
+  </div>
+);
+
 const ExploreCategorySection = () => {
   const navigate = useNavigate();
+
+  const { data: apiCategories, isLoading, isError } = useGetCategoriesQuery();
+
+  /*
+    Normalise each category object from the API.
+    Expected shapes (adjust field names if your backend differs):
+      { name, image }  |  { name, imageUrl }  |  { title, image }
+  */
+  const categories = React.useMemo(() => {
+    if (isLoading || isError || !apiCategories?.length) return FALLBACK_CATEGORIES;
+
+    return apiCategories.map((cat, idx) => ({
+      label: cat.name ?? cat.title ?? `Category ${idx + 1}`,
+      image:
+        cat.image?.url ??   // { url, public_id } object
+        cat.image ??         // plain string
+        cat.imageUrl ??
+        FALLBACK_CATEGORIES[idx % FALLBACK_CATEGORIES.length].image,
+      // keep the raw slug/id so we can pass it to the products page
+      slug: cat.slug ?? cat._id ?? null,
+    }));
+  }, [apiCategories, isLoading, isError]);
+
+  const handleCategoryClick = (cat) => {
+    if (cat.slug) {
+      navigate(`/products?category=${encodeURIComponent(cat.slug)}`);
+    } else {
+      navigate(`/products?category=${encodeURIComponent(cat.label)}`);
+    }
+  };
 
   return (
     <>
@@ -22,13 +65,23 @@ const ExploreCategorySection = () => {
 
         {/* ── Heading row ── */}
         <div className="flex items-center justify-center gap-3 sm:gap-[18px] mb-[10px] flex-wrap">
-          <img src="/images/h1.png" alt="" aria-hidden="true" className="h-5 sm:h-6 md:h-7 w-auto object-contain opacity-85 [transform:scaleX(-1)]" />
-          
-          <h2 className="font-['Ibarra_Real_Nova',serif] font-normal text-[clamp(1.6rem,4vw,2.75rem)] text-[#1a1008] tracking-[-0.01em] leading-none text-center">
+          <img
+            src="/images/h1.png"
+            alt=""
+            aria-hidden="true"
+            className="h-5 sm:h-6 md:h-7 w-auto object-contain opacity-85 [transform:scaleX(-1)]"
+          />
+          <h2
+            className="font-['Ibarra_Real_Nova',serif] font-normal text-[clamp(1.6rem,4vw,2.75rem)] text-[#1a1008] tracking-[-0.01em] leading-none text-center"
+          >
             Explore by Category
           </h2>
-
-          <img src="/images/h1.png" alt="" aria-hidden="true" className="h-5 sm:h-6 md:h-7 w-auto object-contain opacity-85" />
+          <img
+            src="/images/h1.png"
+            alt=""
+            aria-hidden="true"
+            className="h-5 sm:h-6 md:h-7 w-auto object-contain opacity-85"
+          />
         </div>
 
         {/* ── Subtitle ── */}
@@ -38,33 +91,38 @@ const ExploreCategorySection = () => {
 
         {/* ── Category grid ── */}
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 md:gap-10 w-full mb-10 md:mb-12">
-          {categories.map(({ image, label }) => (
-            
-            <div
-              key={label}
-              onClick={() => navigate("/products")}
-              className="flex flex-col gap-3 sm:gap-[14px] cursor-pointer"
-            >
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+            : categories.map((cat) => (
+                <div
+                  key={cat.label}
+                  onClick={() => handleCategoryClick(cat)}
+                  className="flex flex-col gap-3 sm:gap-[14px] cursor-pointer"
+                >
+                  {/* Ornate gold frame */}
+                  <div className="relative aspect-[3/4.2] overflow-visible">
+                    <div className="w-full h-full overflow-hidden shadow-[0_0_0_2.5px_#b8922a,0_0_0_5px_#e8d9a8,0_0_0_8px_#b8922a,0_0_0_10px_#e8d9a8,0_0_0_12px_#b8922a,0_2px_18px_rgba(0,0,0,0.22)]">
+                      <img
+                        src={cat.image}
+                        alt={cat.label}
+                        className="w-full h-full object-cover block"
+                        onError={(e) => {
+                          e.currentTarget.src =
+                            FALLBACK_CATEGORIES[
+                              categories.indexOf(cat) % FALLBACK_CATEGORIES.length
+                            ].image;
+                        }}
+                      />
+                    </div>
+                  </div>
 
-              {/* Ornate gold frame */}
-              <div className="relative aspect-[3/4.2] overflow-visible">
-                <div className="w-full h-full overflow-hidden shadow-[0_0_0_2.5px_#b8922a,0_0_0_5px_#e8d9a8,0_0_0_8px_#b8922a,0_0_0_10px_#e8d9a8,0_0_0_12px_#b8922a,0_2px_18px_rgba(0,0,0,0.22)]">
-                  <img
-                    src={image}
-                    alt={label}
-                    className="w-full h-full object-cover block"
-                  />
+                  {/* Label */}
+                  <div className="flex items-center gap-2 sm:gap-[10px] font-['Outfit',sans-serif] font-normal text-[clamp(0.8rem,1.2vw,0.95rem)] text-[#1a1008] tracking-[0.01em] pl-[2px]">
+                    {cat.label}
+                    <span className="inline-flex items-center">→</span>
+                  </div>
                 </div>
-              </div>
-
-              {/* Label */}
-              <div className="flex items-center gap-2 sm:gap-[10px] font-['Outfit',sans-serif] font-normal text-[clamp(0.8rem,1.2vw,0.95rem)] text-[#1a1008] tracking-[0.01em] pl-[2px]">
-                {label}
-                <span className="inline-flex items-center">→</span>
-              </div>
-
-            </div>
-          ))}
+              ))}
         </div>
 
         {/* ── View All button ── */}

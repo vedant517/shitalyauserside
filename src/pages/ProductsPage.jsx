@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { useGetProductsQuery } from "../Redux/api/productsApi";
+import { useGetCategoriesQuery } from "../Redux/api/categoryApi";
 import {
   Heart,
   SlidersHorizontal,
@@ -8,10 +10,12 @@ import {
   Grid3X3,
   ChevronDown,
   ChevronUp,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 /* ─────────────────────────────────────────
-   STATIC IMAGE PATHS  (public/images/)
+   FALLBACK IMAGES
 ───────────────────────────────────────── */
 const IMGS = [
   "/images/s1.jpg",
@@ -21,29 +25,17 @@ const IMGS = [
 ];
 
 /* ─────────────────────────────────────────
-   STATIC PRODUCTS
-───────────────────────────────────────── */
-const PRODUCTS = Array.from({ length: 12 }, (_, i) => ({
-  _id:              `product-${i}`,
-  name:             "Royal Kanjivaram Silk Saree",
-  price:            18499,
-  original_price:   22499,
-  discounted_price: 18499,
-  image:            IMGS[i % 4],
-  createdAt:        new Date().toISOString(),
-  rating:           4.5,
-  category:         "Royal Silks",
-}));
-
-/* ─────────────────────────────────────────
    HELPERS
 ───────────────────────────────────────── */
-const getCurrentPrice  = (p) => Number(p.discounted_price ?? p.price ?? 0);
+const getCurrentPrice = (p) =>
+  Number(p.discountPrice ?? p.discounted_price ?? p.price ?? 0);
+
 const getOriginalPrice = (p) => {
-  const cur = p.discounted_price ?? p.price;
-  if (p.original_price != null && p.original_price !== cur) return Number(p.original_price);
+  if (p.discountPrice != null && p.discountPrice < p.price) return Number(p.price);
+  if (p.original_price != null && p.original_price > getCurrentPrice(p)) return Number(p.original_price);
   return null;
 };
+
 const getDiscount = (p) => {
   const cur = getCurrentPrice(p);
   const ori = getOriginalPrice(p);
@@ -51,28 +43,40 @@ const getDiscount = (p) => {
   return Math.round((1 - cur / ori) * 100);
 };
 
+const resolveImg = (img) => {
+  if (!img) return null;
+  if (typeof img === "string") return img;
+  return img.url ?? null;
+};
+
+const getProductImg = (p) => {
+  if (Array.isArray(p.images) && p.images.length) return resolveImg(p.images[0]);
+  return resolveImg(p.image) ?? null;
+};
+
 /* ─────────────────────────────────────────
-   FILTER CONFIG
+   FILTER / SORT CONFIG
 ───────────────────────────────────────── */
 const SORT_OPTIONS = [
-  { value: "default",    label: "Default"        },
+  { value: "default",    label: "Default"         },
   { value: "price_asc",  label: "Price: Low–High" },
   { value: "price_desc", label: "Price: High–Low" },
   { value: "newest",     label: "Newest First"    },
   { value: "rating",     label: "Top Rated"       },
 ];
+
 const PRICE_RANGES = [
   { label: "Under ₹5,000",      min: 0,     max: 5000     },
   { label: "₹5,000 – ₹15,000",  min: 5000,  max: 15000    },
   { label: "₹15,000 – ₹30,000", min: 15000, max: 30000    },
-  { label: "Above ₹30,000",     min: 30000, max: Infinity },
+  { label: "Above ₹30,000",     min: 30000, max: Infinity  },
 ];
-const CATEGORY_OPTIONS = ["Wedding", "Party Wear", "Bride", "Festive", "Casual", "Daily Wear"];
-const COLOR_OPTIONS    = ["Red", "Pink", "Green", "Blue", "Yellow", "Purple", "Orange", "Gold"];
-const FABRIC_OPTIONS   = ["Silk", "Cotton", "Chiffon", "Georgette", "Linen", "Banarasi"];
+
+const COLOR_OPTIONS  = ["Red", "Pink", "Green", "Blue", "Yellow", "Purple", "Orange", "Gold"];
+const FABRIC_OPTIONS = ["Silk", "Cotton", "Chiffon", "Georgette", "Linen", "Banarasi"];
 
 /* ─────────────────────────────────────────
-   ACCORDION SECTION
+   ACCORDION
 ───────────────────────────────────────── */
 const AccordionSection = ({ title, children, defaultOpen = true }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -98,41 +102,50 @@ const AccordionSection = ({ title, children, defaultOpen = true }) => {
 };
 
 /* ─────────────────────────────────────────
-   FILTER SIDEBAR
-   — on mobile: full-width drawer below top bar
-   — on lg+: sticky left column
+   FILTER SIDEBAR  — categories from API
 ───────────────────────────────────────── */
-const FilterSidebar = ({ filters, setFilters, onClose }) => {
+const FilterSidebar = ({ filters, setFilters, categoryOptions }) => {
   const toggle = (key, val) =>
     setFilters((f) => {
       const arr = f[key] || [];
-      return { ...f, [key]: arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val] };
+      return {
+        ...f,
+        [key]: arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val],
+      };
     });
 
   return (
     <aside className="w-full lg:w-[220px] lg:flex-shrink-0 bg-white rounded-xl px-5 py-4 self-start lg:sticky lg:top-[120px] border border-[#9383593B]">
 
+      {/* ── CATEGORIES (live from API) ── */}
       <AccordionSection title="Categories" defaultOpen={true}>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-          {CATEGORY_OPTIONS.map((c) => (
-            <label key={c} className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={(filters.categories || []).includes(c)}
-                onChange={() => toggle("categories", c)}
-                className="w-3.5 h-3.5 cursor-pointer accent-[#785822]"
-              />
-              <span
-                className="text-[12px] font-normal leading-none text-[#785822]"
-                style={{ fontFamily: "'Outfit', sans-serif" }}
-              >
-                {c}
-              </span>
-            </label>
-          ))}
-        </div>
+        {categoryOptions.length === 0 ? (
+          <p className="text-[11px] text-gray-400" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            Loading…
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            {categoryOptions.map((c) => (
+              <label key={c.value} className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={(filters.categories || []).includes(c.value)}
+                  onChange={() => toggle("categories", c.value)}
+                  className="w-3.5 h-3.5 cursor-pointer accent-[#785822]"
+                />
+                <span
+                  className="text-[12px] font-normal leading-none text-[#785822]"
+                  style={{ fontFamily: "'Outfit', sans-serif" }}
+                >
+                  {c.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
       </AccordionSection>
 
+      {/* ── COLOR ── */}
       <AccordionSection title="Color" defaultOpen={false}>
         <div className="flex flex-wrap gap-2">
           {COLOR_OPTIONS.map((c) => {
@@ -155,6 +168,7 @@ const FilterSidebar = ({ filters, setFilters, onClose }) => {
         </div>
       </AccordionSection>
 
+      {/* ── PRICE ── */}
       <AccordionSection title="Price" defaultOpen={false}>
         <div className="space-y-1.5">
           {PRICE_RANGES.map((r) => {
@@ -182,6 +196,7 @@ const FilterSidebar = ({ filters, setFilters, onClose }) => {
         </div>
       </AccordionSection>
 
+      {/* ── FABRIC ── */}
       <AccordionSection title="Fabric" defaultOpen={false}>
         <div className="space-y-1.5">
           {FABRIC_OPTIONS.map((f) => (
@@ -217,11 +232,27 @@ const FilterSidebar = ({ filters, setFilters, onClose }) => {
 };
 
 /* ─────────────────────────────────────────
+   SKELETON CARD
+───────────────────────────────────────── */
+const SkeletonCard = () => (
+  <div className="rounded-2xl overflow-hidden border-2 border-transparent animate-pulse">
+    <div
+      className="w-full bg-gray-200"
+      style={{ aspectRatio: "3/4", borderRadius: "14px 14px 0 0" }}
+    />
+    <div className="pt-2 pb-2.5 px-2.5 space-y-2">
+      <div className="h-3 bg-gray-200 rounded w-3/4" />
+      <div className="h-3 bg-gray-200 rounded w-1/2" />
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────
    PRODUCT CARD
 ───────────────────────────────────────── */
 const ProductCard = ({ product, idx, wished, onWishlist, onNavigate }) => {
   const [imgErr, setImgErr] = useState(false);
-  const imgSrc   = imgErr ? IMGS[idx % 4] : (product.image || IMGS[idx % 4]);
+  const imgSrc = imgErr ? IMGS[idx % 4] : (getProductImg(product) ?? IMGS[idx % 4]);
   const price    = getCurrentPrice(product);
   const original = getOriginalPrice(product);
   const discount = getDiscount(product);
@@ -253,7 +284,6 @@ const ProductCard = ({ product, idx, wished, onWishlist, onNavigate }) => {
           />
         </button>
       </div>
-
       <div className="pt-2 pb-2.5 px-2.5">
         <p
           className="font-normal leading-snug line-clamp-1 mb-1 text-[#1E1E1E] text-[13px] sm:text-[14px]"
@@ -262,25 +292,16 @@ const ProductCard = ({ product, idx, wished, onWishlist, onNavigate }) => {
           {product.name || "Saree"}
         </p>
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <span
-            className="font-normal text-[#1E1E1E] text-[13px] sm:text-[15px]"
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
+          <span className="font-normal text-[#1E1E1E] text-[13px] sm:text-[15px]" style={{ fontFamily: "'Outfit', sans-serif" }}>
             ₹{price.toLocaleString("en-IN")}
           </span>
           {original && (
-            <span
-              className="line-through text-[#aaa] text-[11px] sm:text-[12px]"
-              style={{ fontFamily: "'Outfit', sans-serif" }}
-            >
+            <span className="line-through text-[#aaa] text-[11px] sm:text-[12px]" style={{ fontFamily: "'Outfit', sans-serif" }}>
               ₹{original.toLocaleString("en-IN")}
             </span>
           )}
           {discount && (
-            <span
-              className="ml-auto flex items-center justify-center rounded-full text-white text-[8px] sm:text-[9px] font-medium flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-[#785822]"
-              style={{ fontFamily: "'Outfit', sans-serif" }}
-            >
+            <span className="ml-auto flex items-center justify-center rounded-full text-white text-[8px] sm:text-[9px] font-medium flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 bg-[#785822]" style={{ fontFamily: "'Outfit', sans-serif" }}>
               {discount}%
             </span>
           )}
@@ -291,43 +312,51 @@ const ProductCard = ({ product, idx, wished, onWishlist, onNavigate }) => {
 };
 
 /* ─────────────────────────────────────────
-   YOU MAY LIKE  — always visible
+   YOU MAY LIKE
 ───────────────────────────────────────── */
-const YouMayLike = ({ wishlist, onWishlist, onNavigate }) => (
-  <div className="mt-10 sm:mt-14 lg:mt-16 mb-8 sm:mb-12">
-    <div className="flex items-center justify-center gap-2 sm:gap-4 mb-6 sm:mb-10 flex-wrap">
-      <img
-        src="/images/h1.png"
-        alt=""
-        aria-hidden="true"
-        className="h-5 sm:h-7 lg:h-8 w-auto object-contain opacity-60"
-        style={{ transform: "scaleX(-1)" }}
-      />
-      <h2
-        className="font-normal tracking-[0.18em] sm:tracking-[0.22em] uppercase text-[#1a1008] text-[18px] sm:text-[22px] lg:text-[26px]"
-        style={{ fontFamily: "'Ibarra Real Nova', serif" }}
-      >
-        You May Like
-      </h2>
-      <img
-        src="/images/h1.png"
-        alt=""
-        aria-hidden="true"
-        className="h-5 sm:h-7 lg:h-8 w-auto object-contain opacity-60"
-      />
+const YouMayLike = ({ products, wishlist, onWishlist, onNavigate }) => {
+  if (!products?.length) return null;
+  return (
+    <div className="mt-10 sm:mt-14 lg:mt-16 mb-8 sm:mb-12">
+      <div className="flex items-center justify-center gap-2 sm:gap-4 mb-6 sm:mb-10 flex-wrap">
+        <img src="/images/h1.png" alt="" aria-hidden="true" className="h-5 sm:h-7 lg:h-8 w-auto object-contain opacity-60" style={{ transform: "scaleX(-1)" }} />
+        <h2 className="font-normal tracking-[0.18em] sm:tracking-[0.22em] uppercase text-[#1a1008] text-[18px] sm:text-[22px] lg:text-[26px]" style={{ fontFamily: "'Ibarra Real Nova', serif" }}>
+          You May Like
+        </h2>
+        <img src="/images/h1.png" alt="" aria-hidden="true" className="h-5 sm:h-7 lg:h-8 w-auto object-contain opacity-60" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        {products.slice(0, 5).map((product, idx) => (
+          <ProductCard
+            key={`yml-${product._id}`}
+            product={product}
+            idx={idx}
+            wished={wishlist.has(product._id)}
+            onWishlist={onWishlist}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </div>
     </div>
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-      {PRODUCTS.slice(0, 5).map((product, idx) => (
-        <ProductCard
-          key={`yml-${product._id}`}
-          product={product}
-          idx={idx}
-          wished={wishlist.has(product._id)}
-          onWishlist={onWishlist}
-          onNavigate={onNavigate}
-        />
-      ))}
-    </div>
+  );
+};
+
+/* ─────────────────────────────────────────
+   ERROR STATE
+───────────────────────────────────────── */
+const ErrorState = ({ message, onRetry }) => (
+  <div className="flex flex-col items-center justify-center py-24 gap-4 text-center px-4">
+    <AlertCircle size={40} className="text-red-400" />
+    <p className="text-gray-500 text-sm tracking-wide max-w-xs" style={{ fontFamily: "'Outfit', sans-serif" }}>
+      {message || "Failed to load products. Please try again."}
+    </p>
+    <button
+      onClick={onRetry}
+      className="text-[11px] tracking-[0.16em] uppercase px-6 py-2 border border-[#785822] text-[#785822] hover:bg-[#785822] hover:text-white transition-colors duration-200"
+      style={{ fontFamily: "'Outfit', sans-serif" }}
+    >
+      Retry
+    </button>
   </div>
 );
 
@@ -336,7 +365,12 @@ const YouMayLike = ({ wishlist, onWishlist, onNavigate }) => (
 ───────────────────────────────────────── */
 const ProductsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
+  /* ── Pre-select category if navigated from ExploreCategorySection ── */
+  const categoryFromUrl = searchParams.get("category");
+
+  /* ── Wishlist (localStorage) ── */
   const [wishlist, setWishlist] = useState(() => {
     try {
       const stored = localStorage.getItem("sheetalya_wishlist");
@@ -353,32 +387,87 @@ const ProductsPage = () => {
     });
   };
 
+  /* ── UI state ── */
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortBy,     setSortBy]     = useState("default");
   const [sortOpen,   setSortOpen]   = useState(false);
   const [cols,       setCols]       = useState(4);
+
   const [filters, setFilters] = useState({
-    categories: [], colors: [], fabrics: [],
-    priceMin: null, priceMax: null,
+    categories: categoryFromUrl ? [categoryFromUrl] : [],
+    colors:     [],
+    fabrics:    [],
+    priceMin:   null,
+    priceMax:   null,
   });
 
+  /* ── Categories from API ── */
+  const { data: apiCategories = [] } = useGetCategoriesQuery();
+
+  /*
+    Build { label, value } options for the sidebar.
+    value = what gets compared against product.category in the filter.
+    Adjust cat.name / cat._id / cat.slug to match your actual API response.
+  */
+  const categoryOptions = useMemo(() =>
+    apiCategories.map((cat) => ({
+      label: cat.name ?? cat.title ?? "Category",
+      value: cat.slug ?? cat.name ?? cat._id,
+    })),
+  [apiCategories]);
+
+  /* ── RTK Query ── */
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useGetProductsQuery({});
+
+  /* ── Normalise API response ── */
+  const allProducts = useMemo(() => {
+    if (!data) return [];
+    if (Array.isArray(data))          return data;
+    if (Array.isArray(data.data))     return data.data;
+    if (Array.isArray(data.products)) return data.products;
+    return [];
+  }, [data]);
+
+  /* ── Client-side filter + sort ── */
   const displayed = useMemo(() => {
-    let list = [...PRODUCTS];
+    let list = [...allProducts];
+
+    if (filters.categories?.length)
+      list = list.filter((p) =>
+        filters.categories.some(
+          (c) => (p.category?.name ?? p.category ?? "").toLowerCase() === c.toLowerCase()
+        )
+      );
+    if (filters.colors?.length)
+      list = list.filter((p) =>
+        filters.colors.some((c) => (p.color || "").toLowerCase() === c.toLowerCase())
+      );
+    if (filters.fabrics?.length)
+      list = list.filter((p) =>
+        filters.fabrics.some((f) => (p.fabric || "").toLowerCase() === f.toLowerCase())
+      );
     if (filters.priceMin != null)
       list = list.filter((p) => getCurrentPrice(p) >= filters.priceMin);
     if (filters.priceMax != null && filters.priceMax !== Infinity)
       list = list.filter((p) => getCurrentPrice(p) <= filters.priceMax);
+
     switch (sortBy) {
       case "price_asc":  list.sort((a, b) => getCurrentPrice(a) - getCurrentPrice(b)); break;
       case "price_desc": list.sort((a, b) => getCurrentPrice(b) - getCurrentPrice(a)); break;
       case "newest":     list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-      case "rating":     list.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
+      case "rating":     list.sort((a, b) => (b.ratings || b.rating || 0) - (a.ratings || a.rating || 0)); break;
       default: break;
     }
     return list;
-  }, [filters, sortBy]);
+  }, [allProducts, filters, sortBy]);
 
-  /* grid cols — on mobile filter is stacked above so always use full width cols */
   const gridColClass = filterOpen
     ? "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3"
     : (cols === 3
@@ -400,7 +489,6 @@ const ProductsPage = () => {
         <div className="sticky top-[72px] z-20 bg-white border-b border-gray-100">
           <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 gap-2">
 
-            {/* Show/Hide Filter */}
             <button
               onClick={() => setFilterOpen((v) => !v)}
               className="flex items-center gap-1.5 sm:gap-2.5 text-[11px] sm:text-[13px] font-normal tracking-[0.14em] sm:tracking-[0.16em] uppercase px-2 sm:px-3 py-1.5 rounded border border-[#9383593B] text-black transition-colors duration-150 flex-shrink-0"
@@ -411,16 +499,15 @@ const ProductsPage = () => {
               <span className="xs:hidden">Filter</span>
             </button>
 
-            {/* Looks count */}
             <span
-              className="text-[10px] sm:text-[11px] tracking-[0.16em] sm:tracking-[0.18em] uppercase text-gray-400 flex-shrink-0"
-              style={{ fontFamily: "'Outfit', sans-serif" }}
+              className="text-[10px] sm:text-[11px] tracking-[0.16em] sm:tracking-[0.18em] uppercase flex items-center gap-1.5"
+              style={{ color: isFetching ? "#785822" : "#9ca3af", fontFamily: "'Outfit', sans-serif" }}
             >
+              {isFetching && <Loader2 size={11} className="animate-spin" />}
               {displayed.length} Looks
             </span>
 
             <div className="flex items-center gap-3 sm:gap-5">
-              {/* Sort dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setSortOpen((v) => !v)}
@@ -428,10 +515,7 @@ const ProductsPage = () => {
                   style={{ fontFamily: "'Outfit', sans-serif" }}
                 >
                   Sort
-                  <ChevronDown
-                    size={12}
-                    className={`transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`}
-                  />
+                  <ChevronDown size={12} className={`transition-transform duration-200 ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
                 {sortOpen && (
                   <>
@@ -456,7 +540,6 @@ const ProductsPage = () => {
                 )}
               </div>
 
-              {/* Grid toggle — hidden on mobile (always 2-col) */}
               <div className="hidden sm:flex items-center border border-gray-200 rounded-sm overflow-hidden">
                 <button
                   onClick={() => setCols(4)}
@@ -478,24 +561,40 @@ const ProductsPage = () => {
         </div>
 
         {/* ── CONTENT ── */}
-        <div className="px-3 sm:px-5 sm:px-7 lg:px-10 py-4 sm:py-6">
+        <div className="px-3 sm:px-7 lg:px-10 py-4 sm:py-6">
 
-          {/* Filter — on mobile stacks above grid; on lg+ sits beside grid */}
           {filterOpen && (
             <div className="block lg:hidden mb-4">
-              <FilterSidebar filters={filters} setFilters={setFilters} />
+              <FilterSidebar
+                filters={filters}
+                setFilters={setFilters}
+                categoryOptions={categoryOptions}
+              />
             </div>
           )}
 
           <div className="flex gap-6 items-start">
             {filterOpen && (
               <div className="hidden lg:block">
-                <FilterSidebar filters={filters} setFilters={setFilters} />
+                <FilterSidebar
+                  filters={filters}
+                  setFilters={setFilters}
+                  categoryOptions={categoryOptions}
+                />
               </div>
             )}
 
             <div className="flex-1 min-w-0">
-              {displayed.length === 0 ? (
+              {isLoading ? (
+                <div className={`grid ${gridColClass} gap-3 sm:gap-4`}>
+                  {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+              ) : isError ? (
+                <ErrorState
+                  message={error?.data?.message || error?.error}
+                  onRetry={refetch}
+                />
+              ) : displayed.length === 0 ? (
                 <div className="text-center py-20 sm:py-28 text-gray-400 text-sm tracking-wide">
                   No products found.
                 </div>
@@ -516,12 +615,14 @@ const ProductsPage = () => {
             </div>
           </div>
 
-          {/* ── YOU MAY LIKE — always visible ── */}
-          <YouMayLike
-            wishlist={wishlist}
-            onWishlist={toggleWishlist}
-            onNavigate={(id) => navigate(`/products/${id}`)}
-          />
+          {!isLoading && !isError && (
+            <YouMayLike
+              products={allProducts}
+              wishlist={wishlist}
+              onWishlist={toggleWishlist}
+              onNavigate={(id) => navigate(`/products/${id}`)}
+            />
+          )}
         </div>
       </div>
     </>

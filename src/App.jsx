@@ -1,6 +1,7 @@
-// src/App.jsx
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { store } from './Redux/store';
 
 // ── Your pages & components ──
 import HomePage      from './pages/HomePage';
@@ -13,7 +14,7 @@ import Endabout      from './components/Endabout';
 
 // ── Other developer's pages ──
 import ProductsPage from './pages/ProductsPage';
-import CartPage     from './pages/CartPage';
+import CartPage     from './pages/cartPage';
 import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AboutPage    from './pages/AboutPage';
@@ -48,48 +49,52 @@ export default function App() {
 
   const handleToggleWishlist = ({ id, color }) => {
     setCartItems(prev =>
-      prev.map(i => i.id === id && i.color === color ? { ...i, wishlisted: !i.wishlisted } : i)
+      prev.map(i =>
+        i.id === id && i.color === color ? { ...i, wishlisted: !i.wishlisted } : i
+      )
     );
   };
 
   return (
-    <BrowserRouter>
-      <CartDrawer
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        items={cartItems}
-        onRemove={handleRemove}
-        onUpdateQuantity={handleUpdateQuantity}
-        onToggleWishlist={handleToggleWishlist}
-      />
-
-      <Routes>
-        {/* ── Your routes ── */}
-        <Route path="/"              element={<HomePage />} />
-        <Route path="/product"       element={
-          <ProductDetail
-            onAddToCart={handleAddToCart}
-            onOpenCart={() => setCartOpen(true)}
-          />}
+    <Provider store={store}>
+      <BrowserRouter>
+        <CartDrawer
+          open={cartOpen}
+          onClose={() => setCartOpen(false)}
+          items={cartItems}
+          onRemove={handleRemove}
+          onUpdateQuantity={handleUpdateQuantity}
+          onToggleWishlist={handleToggleWishlist}
         />
-        <Route path="/products/:id"  element={
-          <ProductDetail
-            onAddToCart={handleAddToCart}
-            onOpenCart={() => setCartOpen(true)}
-          />}
-        />
-        <Route path="/login"         element={<Login />}         />
-        <Route path="/createaccount" element={<CreateAccount />} />
-        <Route path="/contact"       element={<Contact />}       />
-        <Route path="/endabout"      element={<Endabout />}      />
 
-        {/* ── Other developer's routes ── */}
-        <Route path="/products"      element={<ProductsPage />}  />
-        <Route path="/cart"          element={<CartPage />}      />
-        <Route path="/wishlist"      element={<WishlistPage />}  />
-        <Route path="/checkout"      element={<CheckoutPage />}  />
-        <Route path="/about"         element={<AboutPage />}     />
-      </Routes>
-    </BrowserRouter>
+        <Routes>
+          {/* ── Your routes ── */}
+          <Route path="/"              element={<HomePage />} />
+          <Route path="/product"       element={
+            <ProductDetail
+              onAddToCart={handleAddToCart}
+              onOpenCart={() => setCartOpen(true)}
+            />}
+          />
+          <Route path="/products/:id"  element={
+            <ProductDetail
+              onAddToCart={handleAddToCart}
+              onOpenCart={() => setCartOpen(true)}
+            />}
+          />
+          <Route path="/login"         element={<Login />}         />
+          <Route path="/createaccount" element={<CreateAccount />} />
+          <Route path="/contact"       element={<Contact />}       />
+          <Route path="/endabout"      element={<Endabout />}      />
+
+          {/* ── Other developer's routes ── */}
+          <Route path="/products"      element={<ProductsPage />}  />
+          <Route path="/cart"          element={<CartPage />}      />
+          <Route path="/wishlist"      element={<WishlistPage />}  />
+          <Route path="/checkout"      element={<CheckoutPage />}  />
+          <Route path="/about"         element={<AboutPage />}     />
+        </Routes>
+      </BrowserRouter>
+    </Provider>
   );
 }

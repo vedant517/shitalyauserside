@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useSendOtpMutation, useVerifyOtpMutation } from '../Redux/api/authApi';
 
-function Input({ placeholder, type = 'text', value, onChange }) {
+function Input({ placeholder, type = 'text', value, onChange, disabled }) {
   const [focus, setFocus] = useState(false);
 
   return (
@@ -9,9 +10,10 @@ function Input({ placeholder, type = 'text', value, onChange }) {
       placeholder={placeholder}
       value={value}
       onChange={onChange}
+      disabled={disabled}
       onFocus={() => setFocus(true)}
       onBlur={() => setFocus(false)}
-      className="w-full px-4 py-3 sm:py-[12px] bg-[#faf8f5] rounded-md text-[14px] outline-none transition"
+      className="w-full px-4 py-3 sm:py-[12px] bg-[#faf8f5] rounded-md text-[14px] outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
         border: `1px solid ${focus ? '#b8963a' : '#d4c9bc'}`,
         color: '#3a2200',
@@ -22,8 +24,60 @@ function Input({ placeholder, type = 'text', value, onChange }) {
 }
 
 export default function Login() {
-  const [mobile, setMobile] = useState('+91');
-  const [otp, setOtp] = useState('');
+  const [mobile, setMobile]     = useState('+91');
+  const [otp, setOtp]           = useState('');
+  const [otpSent, setOtpSent]   = useState(false);
+  const [error, setError]       = useState('');
+  const [success, setSuccess]   = useState('');
+
+  const [sendOtp,   { isLoading: sendingOtp }]   = useSendOtpMutation();
+  const [verifyOtp, { isLoading: verifyingOtp }] = useVerifyOtpMutation();
+
+  // Strip country code for sending — keeps raw digits only
+  const getRawPhone = () => mobile.replace(/\D/g, '').replace(/^91/, '');
+
+  const handleSendOtp = async () => {
+    setError('');
+    setSuccess('');
+    const phone = getRawPhone();
+    if (phone.length !== 10) {
+      setError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    try {
+      await sendOtp(phone).unwrap();
+      setOtpSent(true);
+      setSuccess('OTP sent successfully!');
+    } catch (err) {
+      setError(err?.data?.message || 'Failed to send OTP. Please try again.');
+    }
+  };
+
+  const handleResend = async () => {
+    setOtp('');
+    await handleSendOtp();
+  };
+
+  const handleLogin = async () => {
+    setError('');
+    setSuccess('');
+    if (!otp || otp.length < 4) {
+      setError('Please enter the OTP.');
+      return;
+    }
+    const phone = getRawPhone();
+    try {
+      const res = await verifyOtp({ phonenum: phone, otp }).unwrap();
+      setSuccess('Login successful! Redirecting…');
+      // TODO: save token / redirect as needed
+      // e.g. navigate('/home') if using react-router
+      console.log('Login response:', res);
+    } catch (err) {
+      setError(err?.data?.message || 'Invalid OTP. Please try again.');
+    }
+  };
+
+  const isLoading = sendingOtp || verifyingOtp;
 
   return (
     <div
@@ -79,45 +133,87 @@ export default function Login() {
           Login
         </h1>
 
+        {/* ERROR / SUCCESS */}
+        {error && (
+          <p className="text-red-500 text-[12px] text-center mb-3 -mt-2">
+            {error}
+          </p>
+        )}
+        {success && (
+          <p className="text-green-600 text-[12px] text-center mb-3 -mt-2">
+            {success}
+          </p>
+        )}
+
         {/* MOBILE */}
         <div className="text-left mb-5">
           <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-2 block">
             Mobile No
           </label>
-          <Input value={mobile} onChange={(e) => setMobile(e.target.value)} />
+          <div className="flex gap-2">
+            <Input
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
+              disabled={otpSent || isLoading}
+            />
+            {!otpSent && (
+              <button
+                onClick={handleSendOtp}
+                disabled={isLoading}
+                className="shrink-0 px-3 py-2 text-white text-[10px] tracking-widest rounded-md disabled:opacity-60"
+                style={{ background: '#8b7355', whiteSpace: 'nowrap' }}
+              >
+                {sendingOtp ? 'SENDING…' : 'SEND OTP'}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* OTP */}
-        <div className="text-left mb-3">
-          <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-2 block">
-            OTP
-          </label>
-          <Input
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            placeholder="Enter OTP"
-          />
-        </div>
+        {/* OTP — only shown after OTP is sent */}
+        {otpSent && (
+          <>
+            <div className="text-left mb-3">
+              <label className="text-[12px] sm:text-[13px] text-[#5a3e1b] mb-2 block">
+                OTP
+              </label>
+              <Input
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="Enter OTP"
+                type="number"
+                disabled={isLoading}
+              />
+            </div>
 
-        {/* RESEND */}
-        <div className="text-right text-[11px] sm:text-[12px] text-[#777] mb-6">
-          Didn’t receive OTP?{' '}
-          <span className="text-[#c9973a] font-semibold cursor-pointer">
-            RESEND
-          </span>
-        </div>
+            {/* RESEND */}
+            <div className="text-right text-[11px] sm:text-[12px] text-[#777] mb-6">
+              Didn't receive OTP?{' '}
+              <span
+                onClick={!isLoading ? handleResend : undefined}
+                className={`text-[#c9973a] font-semibold ${isLoading ? 'opacity-50' : 'cursor-pointer'}`}
+              >
+                RESEND
+              </span>
+            </div>
 
-        {/* BUTTON */}
-        <button
-          className="w-full py-3 sm:py-[13px] text-white text-[10px] sm:text-[11px] tracking-[0.15em] sm:tracking-[0.2em] rounded-md mb-5"
-          style={{ background: '#8b7355' }}
-        >
-          LOGIN TO PROCEED →
-        </button>
+            {/* LOGIN BUTTON */}
+            <button
+              onClick={handleLogin}
+              disabled={isLoading}
+              className="w-full py-3 sm:py-[13px] text-white text-[10px] sm:text-[11px] tracking-[0.15em] sm:tracking-[0.2em] rounded-md mb-5 disabled:opacity-60"
+              style={{ background: '#8b7355' }}
+            >
+              {verifyingOtp ? 'VERIFYING…' : 'LOGIN TO PROCEED →'}
+            </button>
+          </>
+        )}
+
+        {/* If OTP not yet sent show a spacer */}
+        {!otpSent && <div className="mb-5" />}
 
         {/* FOOTER */}
         <p className="text-[12px] sm:text-[13px] text-[#666] text-center">
-          Don’t have an account?{' '}
+          Don't have an account?{' '}
           <a href="/createaccount" className="text-[#b8963a] font-semibold">
             Create Account
           </a>
