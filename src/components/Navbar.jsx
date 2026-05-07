@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, Heart, ShoppingBag, User, Menu, X, Home } from "lucide-react";
+import { Search, Heart, ShoppingBag, User, Menu, X, Home, ClipboardList, LogOut } from "lucide-react";
 
 const Navbar = () => {
-  const [scrolled,  setScrolled]  = useState(false);
-  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [scrolled,   setScrolled]   = useState(false);
+  const [menuOpen,   setMenuOpen]   = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("isLoggedIn")); // ← new
 
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate  = useNavigate();
+  const location  = useLocation();
 
   const isHome = location.pathname === "/";
 
@@ -17,6 +18,20 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // ← new: sync isLoggedIn whenever login/logout fires a custom event
+  useEffect(() => {
+    const handleAuthChange = () => setIsLoggedIn(!!localStorage.getItem("isLoggedIn"));
+    window.addEventListener("authChange", handleAuthChange);
+    return () => window.removeEventListener("authChange", handleAuthChange);
+  }, []);
+
+  const handleLogout = () => {                                            // ← new
+    localStorage.removeItem("isLoggedIn");
+    window.dispatchEvent(new Event("authChange"));
+    setMenuOpen(false);
+    navigate("/login");
+  };
+
   const navBg = isHome
     ? scrolled
       ? "bg-[#FFF5E2] backdrop-blur-md border-b border-black/10"
@@ -25,12 +40,11 @@ const Navbar = () => {
 
   const textColor = isHome && !scrolled ? "text-white" : "text-[#1a1008]";
 
-  // All nav links — matched to your merged App.jsx routes
   const navLinks = [
-    { label: "Home",        path: "/"            },
-    { label: "Products",    path: "/products"    },
-    { label: "About",       path: "/about"       },
-    { label: "Contact",     path: "/contact"     },
+    { label: "Home",     path: "/"         },
+    { label: "Products", path: "/products" },
+    { label: "About",    path: "/about"    },
+    { label: "Contact",  path: "/contact"  },
   ];
 
   return (
@@ -53,6 +67,17 @@ const Navbar = () => {
               {label}
             </Link>
           ))}
+
+          {/* Order History — only when logged in */}
+          {isLoggedIn && (                                                 // ← new
+            <Link
+              to="/order-history"
+              className={`relative flex items-center gap-1 text-[12.5px] tracking-[0.12em] uppercase transition-colors duration-200 hover:text-[#c8a05a] ${textColor}
+                after:content-[''] after:absolute after:left-0 after:-bottom-[3px] after:w-0 after:h-[1px] after:bg-[#c8a05a] after:transition-all after:duration-300 hover:after:w-full`}
+            >
+              Orders
+            </Link>
+          )}
         </div>
 
         {/* ── MOBILE HAMBURGER ── */}
@@ -100,13 +125,35 @@ const Navbar = () => {
             <ShoppingBag size={18} />
           </button>
 
-          <button
-            onClick={() => navigate("/login")}
-            className={`${textColor} hover:text-[#c8a05a]`}
-            title="Login / Account"
-          >
-            <User size={18} />
-          </button>
+          {/* Login / Logout icon */}
+          {isLoggedIn ? (                                                  // ← new
+            <button
+              onClick={handleLogout}
+              className={`${textColor} hover:text-[#c8a05a]`}
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/login")}
+              className={`${textColor} hover:text-[#c8a05a]`}
+              title="Login"
+            >
+              <User size={18} />
+            </button>
+          )}
+
+          {/* Order History icon — only when logged in */}
+          {isLoggedIn && (                                                 // ← new
+            <button
+              onClick={() => navigate("/order-history")}
+              className={`${textColor} hover:text-[#c8a05a]`}
+              title="Order History"
+            >
+              <ClipboardList size={18} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -127,14 +174,32 @@ const Navbar = () => {
             </Link>
           ))}
 
-          {/* Extra mobile-only links */}
-          <Link
-            to="/login"
-            onClick={() => setMenuOpen(false)}
-            className="uppercase tracking-[0.14em] hover:text-[#c8a05a] transition-colors"
-          >
-            Login
-          </Link>
+          {isLoggedIn ? (                                                  // ← new
+            <>
+              <Link
+                to="/order-history"
+                onClick={() => setMenuOpen(false)}
+                className="uppercase tracking-[0.14em] hover:text-[#c8a05a] transition-colors"
+              >
+                Orders
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="uppercase tracking-[0.14em] hover:text-[#c8a05a] transition-colors"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link
+              to="/login"
+              onClick={() => setMenuOpen(false)}
+              className="uppercase tracking-[0.14em] hover:text-[#c8a05a] transition-colors"
+            >
+              Login
+            </Link>
+          )}
+
           <Link
             to="/wishlist"
             onClick={() => setMenuOpen(false)}

@@ -1,50 +1,53 @@
 import React, { useState } from "react";
-import Navbar from "../components/Navbar"; // adjust path if needed
+import Navbar from "../components/Navbar";
+import { useCreateEnquiryMutation } from "../Redux/api/contactApi";
 
 export default function Contact() {
+
+  const [createEnquiry] = useCreateEnquiryMutation();
+
   const [form, setForm] = useState({
-    name: "",
-    contact: "",
-    email: "",
-    message: "",
+    name:      "",
+    contactNo: "",
+    email:     "",
+    message:   "",
   });
 
   const set = (k) => (e) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", form);
+    try {
+      const res = await createEnquiry(form).unwrap();
+      console.log("Success:", res);
+      alert("Enquiry sent successfully!");
+      setForm({ name: "", contactNo: "", email: "", message: "" });
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to send enquiry");
+    }
   };
 
   return (
     <>
-      {/* NAVBAR */}
       <Navbar />
 
-      {/* PAGE WRAPPER */}
       <div className="min-h-screen bg-white pt-[90px] px-3 sm:px-6 md:px-8 lg:px-10 pb-16 flex justify-center">
 
-        {/* FRAME WRAPPER — position:relative is the anchor for all absolute frames */}
         <div className="relative w-full max-w-[1100px]">
 
-          {/* ── TOP FRAME OVERLAY ──────────────────────────────────────────
-              Sits at the very top of the card, width matches the card exactly.
-              Negative top pulls it up so the ornamental corners sit ON the
-              card border rather than inside it.
-              z-[2] keeps it above the card (z-[1]) so corners overlap cleanly.
-          ─────────────────────────────────────────────────────────────────── */}
           <img
-  src="/half.png"
-  alt=""
-  className="
-    hidden lg:block
-    absolute left-1/2 -translate-x-1/2
-    top-[-18px]
-    w-full
-    pointer-events-none z-[2]
-  "
-/>
+            src="/half.png"
+            alt=""
+            className="
+              hidden lg:block
+              absolute left-1/2 -translate-x-1/2
+              top-[-18px]
+              w-full
+              pointer-events-none z-[2]
+            "
+          />
 
           {/* MAIN CARD */}
           <div
@@ -86,7 +89,6 @@ export default function Contact() {
                 </div>
               </div>
 
-              {/* Bottom Image */}
               <div className="relative h-[120px] sm:h-[160px] md:h-[200px]">
                 <img
                   src="/elephanttree.png"
@@ -96,10 +98,10 @@ export default function Contact() {
               </div>
             </div>
 
-            {/* RIGHT PANEL */}
             <div className="p-5 sm:p-6 md:p-8 lg:p-10">
               <form onSubmit={handleSubmit}>
-                <h2 className="text-[26px] sm:text-[32px] md:text-[38px] lg:text-[44px] text-[#2c1c0c] mb-6 md:mb-8"
+                <h2
+                  className="text-[26px] sm:text-[32px] md:text-[38px] lg:text-[44px] text-[#2c1c0c] mb-6 md:mb-8"
                   style={{ fontFamily: "'Cormorant Garamond', serif" }}
                 >
                   Contact Us
@@ -122,8 +124,8 @@ export default function Contact() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
                   <input
                     type="tel"
-                    value={form.contact}
-                    onChange={set("contact")}
+                    value={form.contactNo}
+                    onChange={set("contactNo")}
                     placeholder="Contact No"
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-[#e0d0ba] rounded-lg bg-[#fefcf8] text-[14px] outline-none focus:border-[#c9973a]"
                   />
@@ -159,25 +161,19 @@ export default function Contact() {
           </div>
           {/* END MAIN CARD */}
 
-          {/* ── BOTTOM FRAME OVERLAY ───────────────────────────────────────
-              Mirrors the top frame. Negative bottom pulls it down so the
-              ornamental corners sit ON the bottom card border.
-          ─────────────────────────────────────────────────────────────────── */}
           <img
-  src="/bottomhalf.png"
-  alt=""
-  className="
-    hidden lg:block
-    absolute left-1/2 -translate-x-1/2
-    bottom-[-18px]
-    w-full
-    pointer-events-none z-[2]
-  "
-/>
+            src="/bottomhalf.png"
+            alt=""
+            className="
+              hidden lg:block
+              absolute left-1/2 -translate-x-1/2
+              bottom-[-18px]
+              w-full
+              pointer-events-none z-[2]
+            "
+          />
 
         </div>
-        {/* END FRAME WRAPPER */}
-
       </div>
     </>
   );

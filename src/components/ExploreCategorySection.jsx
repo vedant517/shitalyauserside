@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGetCategoriesQuery } from "../Redux/api/categoryApi";
 
-/* Fallback static categories shown while loading or on error */
 const FALLBACK_CATEGORIES = [
   { image: "/images/c1.png", label: "Royal Silks"        },
   { image: "/images/c2.png", label: "Festive Radiance"   },
@@ -10,7 +9,6 @@ const FALLBACK_CATEGORIES = [
   { image: "/images/c4.png", label: "Handwoven Heritage" },
 ];
 
-/* Skeleton card shown while loading */
 const SkeletonCard = () => (
   <div className="flex flex-col gap-3 sm:gap-[14px] animate-pulse">
     <div
@@ -23,28 +21,24 @@ const SkeletonCard = () => (
 
 const ExploreCategorySection = () => {
   const navigate = useNavigate();
-
+  const [showAll, setShowAll] = useState(false);                         
   const { data: apiCategories, isLoading, isError } = useGetCategoriesQuery();
 
-  /*
-    Normalise each category object from the API.
-    Expected shapes (adjust field names if your backend differs):
-      { name, image }  |  { name, imageUrl }  |  { title, image }
-  */
   const categories = React.useMemo(() => {
     if (isLoading || isError || !apiCategories?.length) return FALLBACK_CATEGORIES;
 
     return apiCategories.map((cat, idx) => ({
       label: cat.name ?? cat.title ?? `Category ${idx + 1}`,
       image:
-        cat.image?.url ??   // { url, public_id } object
-        cat.image ??         // plain string
+        cat.image?.url ??
+        cat.image ??
         cat.imageUrl ??
         FALLBACK_CATEGORIES[idx % FALLBACK_CATEGORIES.length].image,
-      // keep the raw slug/id so we can pass it to the products page
       slug: cat.slug ?? cat._id ?? null,
     }));
   }, [apiCategories, isLoading, isError]);
+
+  const visibleCategories = showAll ? categories : categories.slice(0, 4);
 
   const handleCategoryClick = (cat) => {
     if (cat.slug) {
@@ -63,7 +57,7 @@ const ExploreCategorySection = () => {
 
       <section className="bg-[#fffff] px-4 sm:px-6 md:px-10 pt-10 sm:pt-14 md:pt-16 pb-[52px] sm:pb-[60px] md:pb-[72px]">
 
-        {/* ── Heading row ── */}
+        
         <div className="flex items-center justify-center gap-3 sm:gap-[18px] mb-[10px] flex-wrap">
           <img
             src="/images/h1.png"
@@ -93,7 +87,7 @@ const ExploreCategorySection = () => {
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 sm:gap-8 md:gap-10 w-full mb-10 md:mb-12">
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-            : categories.map((cat) => (
+            : visibleCategories.map((cat) => (                           
                 <div
                   key={cat.label}
                   onClick={() => handleCategoryClick(cat)}
@@ -125,15 +119,17 @@ const ExploreCategorySection = () => {
               ))}
         </div>
 
-        {/* ── View All button ── */}
-        <div className="flex justify-center">
-          <button
-            onClick={() => navigate("/products")}
-            className="font-['Outfit',sans-serif] font-normal text-[11px] sm:text-[12px] tracking-[0.2em] uppercase text-[#1a1008] bg-transparent border border-[#1a1008] px-7 sm:px-9 py-3 cursor-pointer transition-[background,color] duration-[250ms] ease-in-out hover:bg-[#1a1008] hover:text-[#f5f0e4]"
-          >
-            View All →
-          </button>
-        </div>
+       
+        {!showAll && (                                                   
+          <div className="flex justify-center">
+            <button
+              onClick={() => setShowAll(true)}
+              className="font-['Outfit',sans-serif] font-normal text-[11px] sm:text-[12px] tracking-[0.2em] uppercase text-[#1a1008] bg-transparent border border-[#1a1008] px-7 sm:px-9 py-3 cursor-pointer transition-[background,color] duration-[250ms] ease-in-out hover:bg-[#1a1008] hover:text-[#f5f0e4]"
+            >
+              View All →
+            </button>
+          </div>
+        )}
 
       </section>
     </>

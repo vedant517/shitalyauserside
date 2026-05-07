@@ -132,47 +132,76 @@ function CraftSection() {
 
 /* ═══════════════════════════════════════
    SECTION 3 — Elegance
+   Matches screenshot exactly:
+   [elephant] | [blue line] [heading / desc / btn] | [flowers]
+   [full-width balustrade strip]
 ═══════════════════════════════════════ */
 function EleganceSection() {
   return (
     <section className="relative bg-white overflow-hidden">
 
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between px-6 md:px-10 py-10 gap-8">
+      {/* ── Three-column content row ── */}
+      <div className="flex flex-col md:flex-row items-center justify-between w-full px-0 md:px-0 py-10 md:py-14 gap-0">
 
-        {/* LEFT */}
-        <div className="w-[180px] md:w-[260px]">
-          <img src="/elephantt.png" alt="elephant" className="w-full" />
+        {/* LEFT — elephant */}
+        <div className="flex-shrink-0 w-[200px] md:w-[260px] lg:w-[310px] flex items-center justify-center px-4">
+          <img
+            src="/elephantt.png"
+            alt="Golden elephant"
+            className="w-full h-auto object-contain"
+          />
         </div>
 
-        {/* CENTER */}
-        <div className="text-center md:text-left max-w-[420px]">
-          <h2 className="text-[28px] md:text-[42px] font-semibold text-[#1a0800] mb-4">
-            Step Into Timeless Elegance
-          </h2>
+        {/* CENTER — vertical blue rule + copy block */}
+        <div className="flex items-center gap-5 md:gap-7 flex-1 justify-center px-4">
 
-          <p className="text-[#6b4a1e] text-[14px] md:text-[15px] mb-6">
-            Explore our collection and discover sarees that celebrate your unique style.
-          </p>
+          {/* Thin vertical navy/steel-blue divider */}
+          <div className="hidden sm:block self-stretch w-[3px] rounded-full bg-[#2e5fa3] min-h-[120px]" />
 
-          <button className="px-8 py-3 bg-[#7a6244] text-white text-[11px] tracking-[0.2em]">
-            EXPLORE COLLECTIONS
-          </button>
+          {/* Text block */}
+          <div className="text-left max-w-[380px]">
+            <h2
+              className="text-[26px] sm:text-[30px] md:text-[38px] lg:text-[42px] font-semibold text-[#1a0800] leading-[1.18] mb-4"
+              style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+            >
+              Step Into Timeless Elegance
+            </h2>
+
+            <p
+              className="text-[#5a3d1e] text-[13px] md:text-[14px] leading-relaxed mb-6"
+              style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 300 }}
+            >
+              Explore our collection and discover sarees that<br className="hidden md:block" /> celebrate your unique style.
+            </p>
+
+            <button
+              className="px-7 md:px-9 py-2.5 md:py-3 text-white text-[10px] md:text-[11px] tracking-[0.22em] uppercase transition-opacity duration-200 hover:opacity-85"
+              style={{ backgroundColor: "#7a6244", fontFamily: "'Outfit', sans-serif" }}
+            >
+              EXPLORE COLLECTIONS
+            </button>
+          </div>
         </div>
 
-        {/* RIGHT */}
-        <div className="w-[180px] md:w-[280px]">
-          <img src="/flowers-hanging.png" alt="flowers" className="w-full" />
+        {/* RIGHT — hanging flowers */}
+        <div className="flex-shrink-0 w-[200px] md:w-[260px] lg:w-[310px] flex items-flex-start justify-center px-4 self-start">
+          <img
+            src="/flowers-hanging.png"
+            alt="Hanging flowers decoration"
+            className="w-full h-auto object-contain"
+          />
         </div>
 
       </div>
 
-      {/* BALUSTRADE */}
+      {/* ── Full-width repeating balustrade ── */}
       <div
-        className="w-full h-[100px] md:h-[140px]"
+        className="w-full h-[90px] sm:h-[120px] md:h-[150px]"
         style={{
           backgroundImage: "url('/balustrade.png')",
           backgroundRepeat: "repeat-x",
           backgroundSize: "auto 100%",
+          backgroundPosition: "bottom center",
         }}
       />
     </section>

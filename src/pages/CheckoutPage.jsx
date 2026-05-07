@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { usePlaceOrderMutation } from "../Redux/api/orderApi";
+import { useGetCartQuery } from "../Redux/api/cartApi";
 import Navbar from "../components/Navbar";
 import { Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -49,9 +49,9 @@ const OrderItemRow = ({ item }) => (
       >
         {item.name}
       </p>
-      {item.color && item.color !== "Default" && (
+      {item.selectedVariant?.name && item.selectedVariant?.name !== "Default" && (
         <p className="text-[11px] text-[#999] mt-0.5" style={{ fontFamily: "'Outfit', sans-serif" }}>
-          {item.color}
+          {item.selectedVariant.name}
         </p>
       )}
       <p className="text-[11px] text-[#785822] mt-0.5" style={{ fontFamily: "'Outfit', sans-serif" }}>
@@ -105,12 +105,8 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  /* ── FIX: Read cart items from Redux store (same source as CartDrawer) ──
-     Falls back to location.state if Redux slice isn't set up yet          */
-  const reduxCartItems = useSelector((state) => state.cart?.items ?? []);
-  const cartItems = reduxCartItems.length > 0
-    ? reduxCartItems
-    : (location.state?.cartItems ?? []);
+  const { data: cartData } = useGetCartQuery();
+  const cartItems = Array.isArray(cartData) ? cartData : cartData?.cart || location.state?.cartItems || [];
 
   const [placeOrder, { isLoading, isError, error, isSuccess, data: orderResponse }] =
     usePlaceOrderMutation();
@@ -161,20 +157,13 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     if (!validate()) return;
 
-    /* ── Payload mapped exactly to curl fields ──
-       item.id       → product   (MongoDB _id)
-       item.name     → name
-       item.quantity → qty
-       item.image    → image
-       item.price    → price
-    ── */
-    const orderItems = cartItems.map((item) => ({
-      product: item.id,
-      name:    item.name,
-      qty:     item.quantity,
-      image:   item.image || "",
-      price:   item.price,
-    }));
+   const orderItems = cartItems.map((item) => ({
+  product: item.productId || item._id,
+  name: item.name,
+  qty: item.quantity,
+  image: item.image || "",
+  price: item.price,
+}));
 
     const payload = {
       orderItems,

@@ -1,40 +1,71 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const authApi = createApi({
-  reducerPath: 'authApi',
+  reducerPath: "authApi",
+
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL,
-    credentials: 'include', // sends cookies (token) automatically
+    baseUrl: BASE_URL,
+
+    // ✅ VERY IMPORTANT
+    credentials: "include",
   }),
+
   endpoints: (builder) => ({
-    // POST /api/auth/send-otp  — { phonenum }
+
+    // ======================
+    // SEND OTP
+    // ======================
     sendOtp: builder.mutation({
       query: (phonenum) => ({
-        url: '/api/auth/send-otp',
-        method: 'POST',
+        url: "/api/auth/send-otp",
+        method: "POST",
+
+        credentials: "include",
+
         body: { phonenum },
       }),
     }),
 
-    // POST /api/auth/verify-otp  — { phonenum, otp }
+    // ======================
+    // VERIFY OTP
+    // ======================
     verifyOtp: builder.mutation({
       query: ({ phonenum, otp }) => ({
-        url: '/api/auth/verify-otp',
-        method: 'POST',
-        body: { phonenum, otp },
+        url: "/api/auth/verify-otp",
+        method: "POST",
+
+        credentials: "include",
+
+        body: {
+          phonenum,
+          otp,
+        },
       }),
     }),
 
-    // POST /api/auth/register  — { name, phonenum }
+    // ======================
+    // REGISTER
+    // ======================
     register: builder.mutation({
       query: ({ name, phonenum }) => ({
-        url: '/api/auth/register',
-        method: 'POST',
-        body: { name, phonenum },
+        url: "/api/auth/register",
+        method: "POST",
+
+        credentials: "include",
+
+        body: {
+          name,
+          phonenum,
+        },
       }),
     }),
   }),
 });
 
-export const { useSendOtpMutation, useVerifyOtpMutation, useRegisterMutation } =
-  authApi;
+export const {
+  useSendOtpMutation,
+  useVerifyOtpMutation,
+  useRegisterMutation,
+} = authApi;

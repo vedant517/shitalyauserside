@@ -12,7 +12,7 @@ import {
 /* ─────────────────────────────────────────
    QUANTITY DROPDOWN (per item)
 ───────────────────────────────────────── */
-const QtyDropdown = ({ current, itemId, item, onQtyChange, disabled }) => {
+const QtyDropdown = ({ current, item, onQtyChange, disabled }) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -62,7 +62,6 @@ const CartItem = ({ item, onRemove, onQtyChange, removing }) => {
     item.image?.url ?? item.image ?? item.thumbnail ??
     "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=120&h=120&fit=crop";
 
-  // The cart item id used for DELETE — could be _id or id
   const cartItemId = item._id ?? item.id ?? item.cartItemId;
 
   return (
@@ -131,7 +130,6 @@ const CartItem = ({ item, onRemove, onQtyChange, removing }) => {
         {/* Qty */}
         <QtyDropdown
           current={item.quantity ?? 1}
-          itemId={cartItemId}
           item={item}
           onQtyChange={onQtyChange}
           disabled={removing}
@@ -146,16 +144,16 @@ const CartItem = ({ item, onRemove, onQtyChange, removing }) => {
 ───────────────────────────────────────── */
 const CartPage = () => {
   const navigate = useNavigate();
-  const [coupon,  setCoupon]  = useState("");
-  const [agreed,  setAgreed]  = useState(false);
+  const [coupon,     setCoupon]     = useState("");
+  const [agreed,     setAgreed]     = useState(false);
   const [removingId, setRemovingId] = useState(null);
 
   /* ── RTK hooks ── */
   const { data: cartItems = [], isLoading, isError, refetch } = useGetCartQuery();
   const [removeFromCart] = useRemoveFromCartMutation();
-  const [addToCart]      = useAddToCartMutation(); // used for qty "update" (re-add with new qty)
+  const [addToCart]      = useAddToCartMutation();
 
-  /* ── Handlers ── */
+  /* ── Remove handler ── */
   const handleRemove = async (cartItemId) => {
     setRemovingId(cartItemId);
     try {
@@ -168,8 +166,8 @@ const CartPage = () => {
   };
 
   /*
-    The API has no PATCH/update-qty endpoint in the provided curls.
-    Strategy: remove the old item and re-add with new quantity.
+    No PATCH/update-qty endpoint available (only POST, GET, DELETE).
+    Strategy: remove the existing item then re-add with the new quantity.
     If your backend later adds PATCH /api/cart/update/:id, swap this out.
   */
   const handleQtyChange = async (item, newQty) => {
@@ -188,7 +186,7 @@ const CartPage = () => {
     }
   };
 
-  /* ── Totals ── */
+  /* ── Totals (derived from API data) ── */
   const subtotal = cartItems.reduce(
     (sum, item) => sum + Number(item.price ?? 0) * (item.quantity ?? 1),
     0
@@ -196,7 +194,7 @@ const CartPage = () => {
   const delivery = subtotal > 999 ? 0 : 99;
   const payable  = subtotal + delivery;
 
-  /* ── Loading state ── */
+  /* ── Loading ── */
   if (isLoading) {
     return (
       <>
@@ -208,7 +206,7 @@ const CartPage = () => {
     );
   }
 
-  /* ── Error state ── */
+  /* ── Error ── */
   if (isError) {
     return (
       <>

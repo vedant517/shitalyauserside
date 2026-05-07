@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRegisterMutation, useSendOtpMutation, useVerifyOtpMutation } from '../Redux/api/authApi';
 
 function Input({ placeholder, type = 'text', value, onChange, disabled }) {
@@ -27,6 +28,7 @@ function Input({ placeholder, type = 'text', value, onChange, disabled }) {
 const STEP = { DETAILS: 'details', OTP: 'otp', DONE: 'done' };
 
 export default function CreateAccount() {
+  const navigate = useNavigate();
   const [step, setStep]       = useState(STEP.DETAILS);
   const [name, setName]       = useState('');
   const [mobile, setMobile]   = useState('+91');
@@ -80,11 +82,11 @@ export default function CreateAccount() {
     const phone = getRawPhone();
     try {
       const res = await verifyOtp({ phonenum: phone, otp }).unwrap();
-      setSuccess('Account verified! Redirecting…');
-      setStep(STEP.DONE);
-      // TODO: save token / redirect
-      // e.g. navigate('/home')
-      console.log('Verify response:', res);
+      if (res.user) {
+        localStorage.setItem("user", JSON.stringify(res.user));
+      }
+      // Immediately redirect to home page on success
+      navigate('/');
     } catch (err) {
       setError(err?.data?.message || 'Invalid OTP. Please try again.');
     }

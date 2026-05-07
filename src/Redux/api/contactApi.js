@@ -1,9 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-// same env logic you used
+
 const BASE_URL =
   import.meta.env?.VITE_API_BASE_URL ||
-  process.env?.REACT_APP_API_BASE_URL ||
   "";
 
 export const contactApi = createApi({
@@ -20,7 +19,7 @@ export const contactApi = createApi({
     // POST /enquiries
     createEnquiry: builder.mutation({
       query: (body) => ({
-        url: "api/enquiries",
+        url: "/api/enquiries",
         method: "POST",
         body,
       }),

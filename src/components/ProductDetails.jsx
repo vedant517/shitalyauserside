@@ -214,16 +214,32 @@ export default function ProductDetail() {
   const discount = mrp > price ? Math.round((1 - price / mrp) * 100) : 0;
 
   /* ── Build payload for cart API ── */
-  const buildCartPayload = (qty = 1) => ({
-    productId: product._id,
-    name:      product.name,
-    price,
-    image:     activeVariant?.image ?? images[mainImg],
-    quantity:  qty,
-  });
+  const buildCartPayload = (qty = 1) => {
+    return {
+      productId: product._id,
+      name:      product.name,
+      price,
+      image:     activeVariant?.image ?? images[mainImg],
+      quantity:  qty,
+      selectedVariant: {
+        name: activeVariant?.name || "Default",
+        color: activeVariant?.color || activeVariant?.name || "Default",
+        fabric: activeVariant?.fabric || product?.fabric || "Silk",
+      }
+    };
+  };
+
+  /* ── Check if logged in ── */
+  const isLoggedIn = () => {
+    return !!localStorage.getItem("user");
+  };
 
   /* ── Add to cart ── */
   const handleAddToCart = async () => {
+    if (!isLoggedIn()) {
+      navigate("/login");
+      return;
+    }
     try {
       await addToCart(buildCartPayload(1)).unwrap();
       setCartStatus("success");
@@ -237,12 +253,16 @@ export default function ProductDetail() {
 
   /* ── Buy now: add to cart then navigate ── */
   const handleBuyNow = async () => {
+    if (!isLoggedIn()) {
+      navigate("/login");
+      return;
+    }
     try {
       await addToCart(buildCartPayload(1)).unwrap();
-      navigate("/cart");
+      navigate("/checkout");
     } catch (e) {
       console.error("Buy now failed", e);
-      navigate("/cart"); // still navigate so user can see cart
+      navigate("/checkout"); // still navigate so user can checkout
     }
   };
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSendOtpMutation, useVerifyOtpMutation } from '../Redux/api/authApi';
 
 function Input({ placeholder, type = 'text', value, onChange, disabled }) {
@@ -24,6 +25,7 @@ function Input({ placeholder, type = 'text', value, onChange, disabled }) {
 }
 
 export default function Login() {
+  const navigate = useNavigate();
   const [mobile, setMobile]     = useState('+91');
   const [otp, setOtp]           = useState('');
   const [otpSent, setOtpSent]   = useState(false);
@@ -59,23 +61,50 @@ export default function Login() {
   };
 
   const handleLogin = async () => {
-    setError('');
-    setSuccess('');
-    if (!otp || otp.length < 4) {
-      setError('Please enter the OTP.');
-      return;
+  setError('');
+  setSuccess('');
+
+  if (!otp || otp.length < 4) {
+    setError('Please enter the OTP.');
+    return;
+  }
+
+  const phone = getRawPhone();
+
+  try {
+    const res = await verifyOtp({
+      phonenum: phone,
+      otp,
+    }).unwrap();
+
+    console.log("LOGIN RESPONSE:", res);
+
+    // ✅ save user if exists
+    if (res?.user) {
+      localStorage.setItem(
+        "user",
+        JSON.stringify(res.user)
+      );
     }
-    const phone = getRawPhone();
-    try {
-      const res = await verifyOtp({ phonenum: phone, otp }).unwrap();
-      setSuccess('Login successful! Redirecting…');
-      // TODO: save token / redirect as needed
-      // e.g. navigate('/home') if using react-router
-      console.log('Login response:', res);
-    } catch (err) {
-      setError(err?.data?.message || 'Invalid OTP. Please try again.');
-    }
-  };
+
+    // ✅ check cookie
+    console.log("COOKIE:", document.cookie);
+
+    // wait little before navigation
+    setTimeout(() => {
+      navigate('/');
+    }, 1000);
+
+  } catch (err) {
+
+    console.log("LOGIN ERROR:", err);
+
+    setError(
+      err?.data?.message ||
+      'Invalid OTP. Please try again.'
+    );
+  }
+};
 
   const isLoading = sendingOtp || verifyingOtp;
 
