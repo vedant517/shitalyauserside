@@ -115,7 +115,7 @@ const RelatedCard = ({ product, idx, onNavigate }) => {
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
           <span className="text-[10px] sm:text-[11px] text-[#333]" style={{ fontFamily: '"Cormorant Garamond", serif' }}>
-            {(product.ratings || product.rating || 4.5).toFixed(1)}
+            {(product.ratings || product.rating || 0) > 0 ? (product.ratings || product.rating).toFixed(1) : "New"}
           </span>
         </div>
       </div>

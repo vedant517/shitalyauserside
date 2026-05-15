@@ -91,10 +91,19 @@ export default function ProductCard({ product }) {
 
       {/* Product Info */}
       <div className="mt-2 sm:mt-3 px-0.5">
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
           <h3 className="text-[11px] sm:text-[12px] md:text-[13px] font-medium text-[#3d2800] truncate leading-snug">
             {product.name}
           </h3>
+          {/* Rating Badge */}
+          <div className="flex items-center gap-[3px] bg-[#fdf3e0] px-1.5 py-[2px] rounded flex-shrink-0">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="#c9973a">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            <span className="text-[10px] text-[#785822] font-semibold">
+              {(product.ratings || product.rating || 0) > 0 ? (product.ratings || product.rating).toFixed(1) : "New"}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 mt-0.5 sm:mt-1 flex-wrap">
