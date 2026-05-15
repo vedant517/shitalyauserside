@@ -5,6 +5,7 @@ import { useGetProductByIdQuery, useGetProductsQuery } from "../Redux/api/produc
 import { useAddToCartMutation } from "../Redux/api/cartApi";
 import { useAddToWishlistMutation } from "../Redux/api/wishlistApi";
 import { Loader2, AlertCircle, Heart } from "lucide-react";
+import ReviewSection from "./ReviewSection";
 
 /* ─────────────────────────────────────────
    FALLBACK IMAGES
@@ -483,6 +484,9 @@ export default function ProductDetail() {
             </AccordionItem>
           </div>
         </div>
+
+        {/* ── REVIEWS SECTION ── */}
+        <ReviewSection productId={id} />
       </div>
 
       {/* ── YOU MAY LIKE ── */}

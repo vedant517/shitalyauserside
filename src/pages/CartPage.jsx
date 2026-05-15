@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Trash2, Heart, ChevronDown, Loader2, AlertCircle, ShoppingCart } from "lucide-react";
+import { Trash2, Heart, ChevronDown, Loader2, AlertCircle, ShoppingCart, Tag, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import NewsletterFooter from "../components/NewsLetterFooter";
@@ -8,6 +8,7 @@ import {
   useRemoveFromCartMutation,
   useAddToCartMutation,
 } from "../Redux/api/cartApi";
+import { useApplyCouponMutation, useGetCouponsQuery } from "../Redux/api/couponApi";
 
 /* ─────────────────────────────────────────
    QUANTITY DROPDOWN (per item)
@@ -145,13 +146,17 @@ const CartItem = ({ item, onRemove, onQtyChange, removing }) => {
 const CartPage = () => {
   const navigate = useNavigate();
   const [coupon,     setCoupon]     = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState("");
   const [agreed,     setAgreed]     = useState(false);
   const [removingId, setRemovingId] = useState(null);
 
   /* ── RTK hooks ── */
   const { data: cartItems = [], isLoading, isError, refetch } = useGetCartQuery();
+  const { data: availableCoupons = [] } = useGetCouponsQuery();
   const [removeFromCart] = useRemoveFromCartMutation();
   const [addToCart]      = useAddToCartMutation();
+  const [applyCoupon, { isLoading: isApplying }] = useApplyCouponMutation();
 
   /* ── Remove handler ── */
   const handleRemove = async (cartItemId) => {
@@ -165,11 +170,7 @@ const CartPage = () => {
     }
   };
 
-  /*
-    No PATCH/update-qty endpoint available (only POST, GET, DELETE).
-    Strategy: remove the existing item then re-add with the new quantity.
-    If your backend later adds PATCH /api/cart/update/:id, swap this out.
-  */
+  /* ── Qty update ── */
   const handleQtyChange = async (item, newQty) => {
     const cartItemId = item._id ?? item.id ?? item.cartItemId;
     try {
@@ -186,13 +187,38 @@ const CartPage = () => {
     }
   };
 
+  /* ── Apply Coupon handler ── */
+  const handleApplyCoupon = async () => {
+    setCouponError("");
+    if (!coupon.trim()) return;
+
+    try {
+      const res = await applyCoupon({
+        code: coupon.trim(),
+        cartItems: cartItems.map(item => ({
+          productId: item.productId ?? item._id,
+          price: item.price,
+          quantity: item.quantity
+        }))
+      }).unwrap();
+
+      setAppliedCoupon(res);
+      setCoupon("");
+    } catch (err) {
+      setCouponError(err?.data?.message || "Invalid coupon code");
+      setAppliedCoupon(null);
+    }
+  };
+
   /* ── Totals (derived from API data) ── */
   const subtotal = cartItems.reduce(
     (sum, item) => sum + Number(item.price ?? 0) * (item.quantity ?? 1),
     0
   );
+
+  const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
   const delivery = subtotal > 999 ? 0 : 99;
-  const payable  = subtotal + delivery;
+  const payable  = subtotal - discountAmount + delivery;
 
   /* ── Loading ── */
   if (isLoading) {
@@ -284,10 +310,21 @@ const CartPage = () => {
                   onChange={(e) => setCoupon(e.target.value)}
                   className="outline-none text-[12px] sm:text-[13px] bg-transparent placeholder-gray-400 w-[100px] sm:w-[120px]"
                 />
-                <button className="text-[12px] sm:text-[13px] font-medium text-[#785822] hover:text-[#5c4118] transition-colors shrink-0">
-                  Apply
+                <button 
+                  onClick={handleApplyCoupon}
+                  disabled={isApplying || !coupon.trim()}
+                  className="text-[12px] sm:text-[13px] font-medium text-[#785822] hover:text-[#5c4118] transition-colors shrink-0 disabled:opacity-50"
+                >
+                  {isApplying ? "..." : "Apply"}
                 </button>
               </div>
+              {couponError && <p className="text-red-500 text-[11px] mt-1">{couponError}</p>}
+              {appliedCoupon && (
+                <div className="flex items-center gap-2 mt-1 text-green-600">
+                  <CheckCircle2 size={12} />
+                  <p className="text-[11px]">Coupon Applied: {appliedCoupon.code} (-₹{appliedCoupon.discount})</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -321,6 +358,12 @@ const CartPage = () => {
                   <span>Subtotal ({cartItems.length} {cartItems.length === 1 ? "item" : "items"})</span>
                   <span>₹{subtotal.toLocaleString("en-IN")}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-[12px] sm:text-[13px] text-green-600 mb-2.5">
+                    <span>Discount</span>
+                    <span>-₹{discountAmount.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-[12px] sm:text-[13px] text-[#9c8060] border-b border-[#e0d5c0] pb-3 mb-3">
                   <span>Delivery Charges</span>
                   <span>{delivery === 0 ? "FREE" : `₹${delivery}`}</span>
@@ -361,3 +404,4 @@ const CartPage = () => {
 };
 
 export default CartPage;
+

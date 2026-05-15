@@ -14,7 +14,11 @@ export const reviewApi = createApi({
         body: reviewData,
       }),
     }),
+    getProductReviews: builder.query({
+      query: (productId) => `/api/reviews/product/${productId}`,
+      transformResponse: (res) => res.data || res || [],
+    }),
   }),
 });
 
-export const { useAddReviewMutation } = reviewApi;
+export const { useAddReviewMutation, useGetProductReviewsQuery } = reviewApi;

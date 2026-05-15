@@ -372,6 +372,9 @@ const ProductsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  /* ── Search Query from URL ── */
+  const searchQueryFromUrl = searchParams.get("search") || "";
+
   /* ── Pre-select category if navigated from ExploreCategorySection ── */
   const categoryFromUrl = searchParams.get("category");
 
@@ -431,14 +434,16 @@ const ProductsPage = () => {
     priceMax:   null,
   });
 
+  /* ── Reset filters if category URL param changes ── */
+  React.useEffect(() => {
+    if (categoryFromUrl) {
+      setFilters(prev => ({ ...prev, categories: [categoryFromUrl] }));
+    }
+  }, [categoryFromUrl]);
+
   /* ── Categories from API ── */
   const { data: apiCategories = [] } = useGetCategoriesQuery();
 
-  /*
-    Build { label, value } options for the sidebar.
-    value = what gets compared against product.category in the filter.
-    Adjust cat.name / cat._id / cat.slug to match your actual API response.
-  */
   const categoryOptions = useMemo(() =>
     apiCategories.map((cat) => ({
       label: cat.name ?? cat.title ?? "Category",
@@ -448,22 +453,15 @@ const ProductsPage = () => {
 
   /* ── RTK Query ── */
   const {
-    data,
+    data: allProducts = [],
     isLoading,
     isFetching,
     isError,
     error,
     refetch,
-  } = useGetProductsQuery({});
-
-  /* ── Normalise API response ── */
-  const allProducts = useMemo(() => {
-    if (!data) return [];
-    if (Array.isArray(data))          return data;
-    if (Array.isArray(data.data))     return data.data;
-    if (Array.isArray(data.products)) return data.products;
-    return [];
-  }, [data]);
+  } = useGetProductsQuery({
+    search: searchQueryFromUrl
+  });
 
   /* ── Client-side filter + sort ── */
   const displayed = useMemo(() => {
@@ -519,15 +517,26 @@ const ProductsPage = () => {
         <div className="sticky top-[72px] z-20 bg-white border-b border-gray-100">
           <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 gap-2">
 
-            <button
-              onClick={() => setFilterOpen((v) => !v)}
-              className="flex items-center gap-1.5 sm:gap-2.5 text-[11px] sm:text-[13px] font-normal tracking-[0.14em] sm:tracking-[0.16em] uppercase px-2 sm:px-3 py-1.5 rounded border border-[#9383593B] text-black transition-colors duration-150 flex-shrink-0"
-              style={{ fontFamily: "'Outfit', sans-serif" }}
-            >
-              <SlidersHorizontal size={13} />
-              <span className="hidden xs:inline">{filterOpen ? "Hide Filter" : "Show Filter"}</span>
-              <span className="xs:hidden">Filter</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setFilterOpen((v) => !v)}
+                className="flex items-center gap-1.5 sm:gap-2.5 text-[11px] sm:text-[13px] font-normal tracking-[0.14em] sm:tracking-[0.16em] uppercase px-2 sm:px-3 py-1.5 rounded border border-[#9383593B] text-black transition-colors duration-150 flex-shrink-0"
+                style={{ fontFamily: "'Outfit', sans-serif" }}
+              >
+                <SlidersHorizontal size={13} />
+                <span className="hidden xs:inline">{filterOpen ? "Hide Filter" : "Show Filter"}</span>
+                <span className="xs:hidden">Filter</span>
+              </button>
+
+              {searchQueryFromUrl && (
+                <div className="hidden md:flex items-center gap-2 bg-[#f5ead4] px-3 py-1.5 rounded-full border border-[#9383593B]">
+                  <span className="text-[11px] uppercase tracking-wider text-[#785822]">Search: {searchQueryFromUrl}</span>
+                  <button onClick={() => navigate("/products")} className="text-[#785822] hover:text-black">
+                    <AlertCircle size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
 
             <span
               className="text-[10px] sm:text-[11px] tracking-[0.16em] sm:tracking-[0.18em] uppercase flex items-center gap-1.5"

@@ -26,9 +26,15 @@ export const productsApi = createApi({
         if (params.minPrice) search.set("minPrice", params.minPrice);
         if (params.maxPrice) search.set("maxPrice", params.maxPrice);
         if (params.sort)     search.set("sort",     params.sort);
+        if (params.search)   search.set("search",   params.search);
         const qs = search.toString();
-        // Fixed: consistent /api/products path with leading slash
         return qs ? `/api/products?${qs}` : `/api/products`;
+      },
+      // ✅ Normalise the response — backend returns { success, data: [...] }
+      transformResponse: (res) => {
+        if (Array.isArray(res))       return res;
+        if (Array.isArray(res?.data)) return res.data;
+        return [];
       },
       providesTags: ["Products"],
     }),
