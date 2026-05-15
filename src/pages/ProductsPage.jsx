@@ -3,6 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useGetProductsQuery } from "../Redux/api/productsApi";
 import { useGetCategoriesQuery } from "../Redux/api/categoryApi";
+import { 
+  useGetWishlistQuery, 
+  useAddToWishlistMutation, 
+  useRemoveFromWishlistMutation 
+} from "../Redux/api/wishlistApi";
 import {
   Heart,
   SlidersHorizontal,
@@ -370,21 +375,46 @@ const ProductsPage = () => {
   /* ── Pre-select category if navigated from ExploreCategorySection ── */
   const categoryFromUrl = searchParams.get("category");
 
-  /* ── Wishlist (localStorage) ── */
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      const stored = localStorage.getItem("sheetalya_wishlist");
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch { return new Set(); }
-  });
+  /* ── Wishlist (API) ── */
+  const { data: wishlistData } = useGetWishlistQuery();
+  const [addToWishlist] = useAddToWishlistMutation();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
 
-  const toggleWishlist = (pid) => {
-    setWishlist((prev) => {
-      const next = new Set(prev);
-      next.has(pid) ? next.delete(pid) : next.add(pid);
-      try { localStorage.setItem("sheetalya_wishlist", JSON.stringify([...next])); } catch {}
-      return next;
-    });
+  const wishlistedIds = useMemo(() => {
+    const rawItems = wishlistData?.wishlist ?? wishlistData?.items ?? (Array.isArray(wishlistData) ? wishlistData : []);
+    return new Set(rawItems.map((item) => {
+      const p = item.product ?? item;
+      return p.productId ?? p._id;
+    }));
+  }, [wishlistData]);
+
+  const toggleWishlist = async (productId) => {
+    if (!localStorage.getItem("isLoggedIn")) {
+      navigate("/login");
+      return;
+    }
+
+    const isWished = wishlistedIds.has(productId);
+
+    try {
+      if (isWished) {
+        await removeFromWishlist(productId).unwrap();
+      } else {
+        const product = allProducts.find((p) => p._id === productId);
+        if (product) {
+          await addToWishlist({
+            productId:   product._id,
+            name:        product.name,
+            price:       getCurrentPrice(product),
+            image:       getProductImg(product),
+            rating:      product.ratings ?? product.rating ?? 4,
+            description: product.description ?? "",
+          }).unwrap();
+        }
+      }
+    } catch (err) {
+      console.error("Wishlist toggle failed", err);
+    }
   };
 
   /* ── UI state ── */
@@ -605,7 +635,7 @@ const ProductsPage = () => {
                       key={product._id}
                       product={product}
                       idx={idx}
-                      wished={wishlist.has(product._id)}
+                      wished={wishlistedIds.has(product._id)}
                       onWishlist={toggleWishlist}
                       onNavigate={(id) => navigate(`/products/${id}`)}
                     />
@@ -618,7 +648,7 @@ const ProductsPage = () => {
           {!isLoading && !isError && (
             <YouMayLike
               products={allProducts}
-              wishlist={wishlist}
+              wishlist={wishlistedIds}
               onWishlist={toggleWishlist}
               onNavigate={(id) => navigate(`/products/${id}`)}
             />

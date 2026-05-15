@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, ChevronDown, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import NewsletterFooter from "../components/NewsLetterFooter";
-import { useGetWishlistQuery } from "../Redux/api/wishlistApi";
+import { useGetWishlistQuery, useRemoveFromWishlistMutation } from "../Redux/api/wishlistApi";
 
 const WishlistPage = () => {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ const WishlistPage = () => {
 
   // ── Fetch wishlist from API ──
   const { data, isLoading, isError, error } = useGetWishlistQuery();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
 
   // Normalise API response — adjust the field path to match your backend shape
   // e.g. if backend returns { wishlist: [...] } use data?.wishlist
@@ -24,7 +25,7 @@ const WishlistPage = () => {
   const products = rawItems.map((item) => {
     const p = item.product ?? item; // handle both nested & flat shapes
     return {
-      id:       p._id ?? p.id,
+      id:       p.productId ?? p._id ?? p.id,
       name:     p.name,
       price:    p.price,
       mrp:      p.mrp ?? p.originalPrice ?? p.price,
@@ -34,11 +35,11 @@ const WishlistPage = () => {
   });
 
   // Seed wished list once data arrives (all items start as wishlisted)
-  useState(() => {
+  useEffect(() => {
     if (products.length && wished.length === 0) {
       setWished(products.map((p) => p.id));
     }
-  });
+  }, [products.length, wished.length]);
 
   const sortOptions = [
     "Price: Low to High",
@@ -47,10 +48,16 @@ const WishlistPage = () => {
     "Popular",
   ];
 
-  const toggleWish = (id) => {
-    setWished((prev) =>
-      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
-    );
+  const handleRemoveFromWishlist = async (id) => {
+    // Optimistically hide it from local list
+    setWished((prev) => prev.filter((w) => w !== id));
+    try {
+      await removeFromWishlist(id).unwrap();
+    } catch (e) {
+      // Revert on failure
+      console.error("Remove from wishlist failed", e);
+      setWished((prev) => [...prev, id]);
+    }
   };
 
   return (
@@ -180,9 +187,10 @@ const WishlistPage = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleWish(product.id);
+                        handleRemoveFromWishlist(product.id);
                       }}
                       className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 flex items-center justify-center transition-all hover:scale-110"
+                      title="Remove from wishlist"
                     >
                       <Heart
                         size={17}

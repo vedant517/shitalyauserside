@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 /* ═══════════════════════════════════════
    SECTION 1 — What We Stand For
@@ -137,73 +138,68 @@ function CraftSection() {
    [full-width balustrade strip]
 ═══════════════════════════════════════ */
 function EleganceSection() {
+  const navigate = useNavigate();
   return (
-    <section className="relative bg-white overflow-hidden">
-
-      {/* ── Three-column content row ── */}
-      <div className="flex flex-col md:flex-row items-center justify-between w-full px-0 md:px-0 py-10 md:py-14 gap-0">
-
-        {/* LEFT — elephant */}
-        <div className="flex-shrink-0 w-[200px] md:w-[260px] lg:w-[310px] flex items-center justify-center px-4">
+    <section className="relative bg-white overflow-hidden pt-8 md:pt-12">
+      {/* ── Content Row (Elephant - Button - Flowers) ── */}
+      <div className="relative flex flex-col md:flex-row items-end justify-between w-full px-6 md:px-12 lg:px-20 z-10">
+        
+        {/* LEFT — Golden Elephant */}
+        <div className="flex-shrink-0 w-[140px] sm:w-[180px] md:w-[220px] lg:w-[260px] animate-fade-in-left -mb-1 md:-mb-2">
           <img
             src="/elephantt.png"
             alt="Golden elephant"
-            className="w-full h-auto object-contain"
+            className="w-full h-auto object-contain drop-shadow-lg block"
           />
         </div>
 
-        {/* CENTER — vertical blue rule + copy block */}
-        <div className="flex items-center gap-5 md:gap-7 flex-1 justify-center px-4">
-
-          {/* Thin vertical navy/steel-blue divider */}
-          <div className="hidden sm:block self-stretch w-[3px] rounded-full bg-[#2e5fa3] min-h-[120px]" />
-
-          {/* Text block */}
-          <div className="text-left max-w-[380px]">
-            <h2
-              className="text-[26px] sm:text-[30px] md:text-[38px] lg:text-[42px] font-semibold text-[#1a0800] leading-[1.18] mb-4"
-              style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
-            >
-              Step Into Timeless Elegance
-            </h2>
-
-            <p
-              className="text-[#5a3d1e] text-[13px] md:text-[14px] leading-relaxed mb-6"
-              style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 300 }}
-            >
-              Explore our collection and discover sarees that<br className="hidden md:block" /> celebrate your unique style.
-            </p>
-
-            <button
-              className="px-7 md:px-9 py-2.5 md:py-3 text-white text-[10px] md:text-[11px] tracking-[0.22em] uppercase transition-opacity duration-200 hover:opacity-85"
-              style={{ backgroundColor: "#7a6244", fontFamily: "'Outfit', sans-serif" }}
-            >
-              EXPLORE COLLECTIONS
-            </button>
-          </div>
+        {/* CENTER — Button */}
+        <div className="my-8 md:my-0 pb-10 md:pb-20 flex flex-col items-center">
+          <button
+            onClick={() => navigate("/products")}
+            className="px-8 sm:px-10 md:px-12 py-3 sm:py-3.5 md:py-4 text-white text-[11px] sm:text-[12px] md:text-[13px] tracking-[0.25em] font-semibold uppercase transition-all duration-300 hover:scale-105 shadow-xl"
+            style={{ 
+              backgroundColor: "#938359", 
+              fontFamily: "'Outfit', sans-serif" 
+            }}
+          >
+            EXPLORE COLLECTIONS
+          </button>
         </div>
 
-        {/* RIGHT — hanging flowers */}
-        <div className="flex-shrink-0 w-[200px] md:w-[260px] lg:w-[310px] flex items-flex-start justify-center px-4 self-start">
+        {/* RIGHT — Hanging Flowers */}
+        <div className="flex-shrink-0 w-[120px] sm:w-[160px] md:w-[200px] lg:w-[240px] self-start md:mt-[-20px]">
           <img
             src="/flowers-hanging.png"
             alt="Hanging flowers decoration"
-            className="w-full h-auto object-contain"
+            className="w-full h-auto object-contain block"
           />
         </div>
-
       </div>
 
-      {/* ── Full-width repeating balustrade ── */}
-      <div
-        className="w-full h-[90px] sm:h-[120px] md:h-[150px]"
-        style={{
-          backgroundImage: "url('/balustrade.png')",
-          backgroundRepeat: "repeat-x",
-          backgroundSize: "auto 100%",
-          backgroundPosition: "bottom center",
-        }}
-      />
+      {/* ── Balustrade / Railing Strip ── */}
+      <div className="relative w-full overflow-hidden -mt-8 sm:-mt-12 md:-mt-16">
+        <div
+          className="w-full h-[120px] sm:h-[160px] md:h-[200px] lg:h-[240px]"
+          style={{
+            backgroundImage: "url('/balustrade.png')",
+            backgroundRepeat: "repeat-x",
+            backgroundSize: "auto 100%",
+            backgroundPosition: "bottom center",
+            display: "block"
+          }}
+        />
+      </div>
+
+      <style>{`
+        @keyframes fade-in-left {
+          from { opacity: 0; transform: translateX(-20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-fade-in-left {
+          animation: fade-in-left 1s ease-out forwards;
+        }
+      `}</style>
     </section>
   );
 }

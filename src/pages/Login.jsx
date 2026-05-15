@@ -81,10 +81,9 @@ export default function Login() {
 
     // ✅ save user if exists
     if (res?.user) {
-      localStorage.setItem(
-        "user",
-        JSON.stringify(res.user)
-      );
+      localStorage.setItem("user", JSON.stringify(res.user));
+      localStorage.setItem("isLoggedIn", "true");
+      window.dispatchEvent(new Event("authChange"));
     }
 
     // ✅ check cookie

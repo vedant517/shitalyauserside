@@ -12,6 +12,16 @@ const SHIP_COST     = 99;
 const fmt = (n) =>
   Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 /* ── Reusable input field ── */
 const Field = ({ label, name, value, onChange, type = "text", required, placeholder }) => (
   <div className="flex flex-col gap-1">
@@ -119,6 +129,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [summaryOpen,   setSummaryOpen]   = useState(true);
   const [formError,     setFormError]     = useState("");
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   /* ── Price calculations (match curl body exactly) ── */
   const itemsPrice    = useMemo(() =>
@@ -183,14 +194,50 @@ export default function CheckoutPage() {
     };
 
     try {
-      await placeOrder(payload).unwrap();
+      const res = await placeOrder(payload).unwrap();
+
+      if (paymentMethod === "online") {
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          setFormError("Razorpay SDK failed to load. Please check your connection.");
+          return;
+        }
+
+        const amountInPaise = Math.round(totalPrice * 100);
+
+        const options = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_ScVE9xCqc3lMd6",
+          amount: amountInPaise,
+          currency: "INR",
+          name: "Sheetalya Saree",
+          description: "Order Payment",
+          order_id: res.order?.razorpayOrderId || res.razorpayOrderId || undefined,
+          handler: function (response) {
+            setPaymentSuccess(true);
+          },
+          prefill: {
+            name: addr.fullName,
+            email: "customer@example.com",
+            contact: addr.phone,
+          },
+          theme: {
+            color: "#c9973a",
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on("payment.failed", function (response) {
+          setFormError(response.error.description || "Payment failed");
+        });
+        rzp.open();
+      }
     } catch (_) {
       // isError handles UI feedback
     }
   };
 
   /* ── Success screen ── */
-  if (isSuccess) {
+  if (isSuccess && (paymentMethod === "cod" || paymentSuccess)) {
     const orderId = orderResponse?.order?._id ?? orderResponse?._id ?? null;
     return (
       <div className="bg-white min-h-screen">

@@ -84,6 +84,8 @@ export default function CreateAccount() {
       const res = await verifyOtp({ phonenum: phone, otp }).unwrap();
       if (res.user) {
         localStorage.setItem("user", JSON.stringify(res.user));
+        localStorage.setItem("isLoggedIn", "true");
+        window.dispatchEvent(new Event("authChange"));
       }
       // Immediately redirect to home page on success
       navigate('/');

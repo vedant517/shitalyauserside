@@ -1,12 +1,41 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
+import { useAddToWishlistMutation } from "../Redux/api/wishlistApi";
 
 export default function ProductCard({ product }) {
-  const [liked, setLiked] = useState(false);
+  const navigate  = useNavigate();
+  const [addToWishlist, { isLoading: addingToWish }] = useAddToWishlistMutation();
+  const [wishStatus, setWishStatus] = useState("idle"); // idle | success | error
 
   const discount =
     product.mrp && product.price
       ? Math.round((1 - product.price / product.mrp) * 100)
       : null;
+
+  const handleWishlist = async (e) => {
+    e.stopPropagation();
+    if (!localStorage.getItem("isLoggedIn")) {
+      navigate("/login");
+      return;
+    }
+    try {
+      await addToWishlist({
+        productId:   product._id ?? product.id,
+        name:        product.name,
+        price:       product.price,
+        image:       product.image ?? product.images?.[0] ?? "",
+        rating:      Number(product.ratings ?? product.rating ?? 0),
+        description: product.description ?? "",
+      }).unwrap();
+      setWishStatus("success");
+      setTimeout(() => setWishStatus("idle"), 2000);
+    } catch (err) {
+      console.error("Wishlist add failed", err);
+      setWishStatus("error");
+      setTimeout(() => setWishStatus("idle"), 2000);
+    }
+  };
 
   return (
     <div className="relative group cursor-pointer w-full">
@@ -35,22 +64,29 @@ export default function ProductCard({ product }) {
 
       {/* Wishlist Heart */}
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setLiked(!liked);
-        }}
-        className="absolute top-2 right-2 bg-white/90 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition"
+        onClick={handleWishlist}
+        disabled={addingToWish}
+        title={
+          wishStatus === "success" ? "Added to wishlist!" :
+          wishStatus === "error"   ? "Failed — try again" :
+          "Add to Wishlist"
+        }
+        className="absolute top-2 right-2 bg-white/90 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition hover:scale-110 disabled:opacity-60"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          className="w-3 h-3 sm:w-[14px] sm:h-[14px]"
-          fill={liked ? "#c9973a" : "none"}
-          stroke="#c9973a"
-          strokeWidth="2"
-        >
-          <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z" />
-        </svg>
+        {addingToWish ? (
+          <Loader2 className="w-3 h-3 sm:w-[13px] sm:h-[13px] animate-spin text-[#c9973a]" />
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            className="w-3 h-3 sm:w-[14px] sm:h-[14px]"
+            fill={wishStatus === "success" ? "#c9973a" : "none"}
+            stroke={wishStatus === "error" ? "#b91c1c" : "#c9973a"}
+            strokeWidth="2"
+          >
+            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z" />
+          </svg>
+        )}
       </button>
 
       {/* Product Info */}

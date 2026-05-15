@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar";
 import { useGetProductByIdQuery, useGetProductsQuery } from "../Redux/api/productsApi";
 import { useAddToCartMutation } from "../Redux/api/cartApi";
+import { useAddToWishlistMutation } from "../Redux/api/wishlistApi";
 import { Loader2, AlertCircle, Heart } from "lucide-react";
 
 /* ─────────────────────────────────────────
@@ -137,7 +138,8 @@ export default function ProductDetail() {
   /* ── Data hooks ── */
   const { data: productData, isLoading, isError, error, refetch } = useGetProductByIdQuery(id, { skip: !id });
   const { data: allData } = useGetProductsQuery({});
-  const [addToCart, { isLoading: addingToCart }] = useAddToCartMutation();
+  const [addToCart,      { isLoading: addingToCart }]  = useAddToCartMutation();
+  const [addToWishlist,  { isLoading: addingToWish }]  = useAddToWishlistMutation();
 
   const relatedProducts = React.useMemo(() => {
     const list = Array.isArray(allData)
@@ -151,10 +153,11 @@ export default function ProductDetail() {
   const product = productData?.data ?? productData?.product ?? productData ?? null;
 
   /* ── Local UI state ── */
-  const [mainImg,       setMainImg]   = useState(0);
-  const [selectedColor, setColor]    = useState(null);
+  const [mainImg,       setMainImg]    = useState(0);
+  const [selectedColor, setColor]     = useState(null);
   const [cartStatus,    setCartStatus] = useState("idle"); // idle | success | error
-  const [buyHov,        setBuyHov]   = useState(false);
+  const [wishStatus,    setWishStatus] = useState("idle"); // idle | success | error
+  const [buyHov,        setBuyHov]    = useState(false);
 
   /* ── Loading ── */
   if (isLoading) {
@@ -231,7 +234,7 @@ export default function ProductDetail() {
 
   /* ── Check if logged in ── */
   const isLoggedIn = () => {
-    return !!localStorage.getItem("user");
+    return !!localStorage.getItem("isLoggedIn");
   };
 
   /* ── Add to cart ── */
@@ -248,6 +251,27 @@ export default function ProductDetail() {
       console.error("Add to cart failed", e);
       setCartStatus("error");
       setTimeout(() => setCartStatus("idle"), 1500);
+    }
+  };
+
+  /* ── Add to wishlist ── */
+  const handleAddToWishlist = async () => {
+    if (!isLoggedIn()) { navigate("/login"); return; }
+    try {
+      await addToWishlist({
+        productId:   product._id,
+        name:        product.name,
+        price,
+        image:       activeVariant?.image ?? images[mainImg],
+        rating:      Number(product.ratings ?? product.rating ?? 0),
+        description: product.description ?? "",
+      }).unwrap();
+      setWishStatus("success");
+      setTimeout(() => setWishStatus("idle"), 2000);
+    } catch (e) {
+      console.error("Add to wishlist failed", e);
+      setWishStatus("error");
+      setTimeout(() => setWishStatus("idle"), 2000);
     }
   };
 
@@ -322,10 +346,21 @@ export default function ProductDetail() {
                   {discount}% OFF
                 </div>
               )}
-              <button className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9973a" strokeWidth="2">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
+              <button
+                onClick={handleAddToWishlist}
+                disabled={addingToWish}
+                title={wishStatus === "success" ? "Added to wishlist!" : wishStatus === "error" ? "Failed" : "Add to Wishlist"}
+                className="absolute top-2 sm:top-3 right-2 sm:right-3 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all duration-200 hover:scale-110 disabled:opacity-60"
+              >
+                {addingToWish
+                  ? <Loader2 size={13} className="animate-spin text-[#c9973a]" />
+                  : <Heart
+                      size={14}
+                      fill={wishStatus === "success" ? "#c9973a" : "none"}
+                      stroke={wishStatus === "error" ? "#b91c1c" : "#c9973a"}
+                      strokeWidth={2}
+                    />
+                }
               </button>
             </div>
           </div>
