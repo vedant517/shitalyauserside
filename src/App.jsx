@@ -14,10 +14,11 @@ import Endabout      from './components/Endabout';
 
 // ── Other developer's pages ──
 import ProductsPage from './pages/ProductsPage';
-import CartPage     from './pages/cartPage';
+import CartPage     from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AboutPage    from './pages/AboutPage';
+import OrderHistory from './pages/OrderHistory';
 
 export default function App() {
   const [cartOpen,  setCartOpen]  = useState(false);
@@ -93,6 +94,7 @@ export default function App() {
           <Route path="/wishlist"      element={<WishlistPage />}  />
           <Route path="/checkout"      element={<CheckoutPage />}  />
           <Route path="/about"         element={<AboutPage />}     />
+          <Route path="/order-history" element={<OrderHistory />}  />
         </Routes>
       </BrowserRouter>
     </Provider>
